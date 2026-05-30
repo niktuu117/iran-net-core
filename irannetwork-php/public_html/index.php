@@ -50,6 +50,9 @@ spl_autoload_register(function (string $class): void {
     }
 });
 
+// Helper functions (procedural, not a class)
+require __DIR__ . '/app/core/Helpers.php';
+
 // Bootstrap router
 $router = new Router();
 
