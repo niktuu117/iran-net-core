@@ -1,0 +1,13 @@
+-- IranNetwork - Database schema
+-- Phase 2 placeholder. Tables will be added in Phase 2.
+
+-- Example skeleton (to be expanded in Phase 2):
+--
+-- CREATE TABLE users (
+--   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+--   email VARCHAR(150) NOT NULL UNIQUE,
+--   password_hash VARCHAR(255) NOT NULL,
+--   name VARCHAR(120) NOT NULL,
+--   role ENUM('admin','editor') NOT NULL DEFAULT 'editor',
+--   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
