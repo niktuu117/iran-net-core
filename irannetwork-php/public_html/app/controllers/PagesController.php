@@ -30,6 +30,50 @@ class PagesController extends Controller
         ]);
     }
 
+    /** POST /contact — store message and redirect with flash. */
+    public function submitContact(): void
+    {
+        if (!Csrf::verify($_POST[Csrf::name()] ?? null)) {
+            flash('contact_error', 'توکن امنیتی نامعتبر است. لطفاً صفحه را تازه کنید.');
+            redirect('/contact');
+        }
+
+        $name    = trim((string)($_POST['name'] ?? ''));
+        $phone   = trim((string)($_POST['phone'] ?? ''));
+        $email   = trim((string)($_POST['email'] ?? ''));
+        $service = trim((string)($_POST['service'] ?? ''));
+        $message = trim((string)($_POST['message'] ?? ''));
+
+        $errors = [];
+        if (mb_strlen($name) < 2)   $errors[] = 'نام را به‌درستی وارد کنید.';
+        if (!preg_match('/^[0-9+\-\s]{7,20}$/', $phone)) $errors[] = 'شماره تماس معتبر نیست.';
+        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'ایمیل معتبر نیست.';
+        if (mb_strlen($message) < 10) $errors[] = 'متن پیام باید حداقل ۱۰ کاراکتر باشد.';
+
+        if ($errors) {
+            keep_old(compact('name','phone','email','service','message'));
+            flash('contact_error', implode(' ', $errors));
+            redirect('/contact');
+        }
+
+        try {
+            if (Database::isConfigured()) {
+                (new ContactMessage())->create([
+                    'name'=>$name,'phone'=>$phone,
+                    'email'=>$email !== '' ? $email : null,
+                    'service'=>$service !== '' ? $service : null,
+                    'message'=>$message,'status'=>'new',
+                ]);
+            }
+            clear_old();
+            flash('contact_success', 'پیام شما با موفقیت ارسال شد. به‌زودی با شما در ارتباط خواهیم بود.');
+        } catch (Throwable $e) {
+            flash('contact_error', 'ذخیره پیام ناموفق بود. لطفاً بعداً تلاش کنید.');
+        }
+        redirect('/contact');
+    }
+
+
     public function faq(): void
     {
         $this->view('public/faq', [
