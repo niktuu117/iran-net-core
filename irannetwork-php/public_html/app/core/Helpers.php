@@ -2,27 +2,39 @@
 declare(strict_types=1);
 
 /**
- * Global helper functions.
+ * Global helper functions (Phase 2).
  */
 
 if (!function_exists('e')) {
-    /** Escape output for HTML context. */
     function e(?string $value): string
     {
         return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 }
 
+if (!function_exists('redirect')) {
+    function redirect(string $path, int $status = 302): void
+    {
+        header('Location: ' . $path, true, $status);
+        exit;
+    }
+}
+
 if (!function_exists('url')) {
-    /** Build an absolute URL relative to the site root. */
     function url(string $path = '/'): string
     {
         return '/' . ltrim($path, '/');
     }
 }
 
+if (!function_exists('admin_url')) {
+    function admin_url(string $path = ''): string
+    {
+        return '/admin/' . ltrim($path, '/');
+    }
+}
+
 if (!function_exists('asset')) {
-    /** Build a URL for an asset under /assets. */
     function asset(string $path): string
     {
         return '/assets/' . ltrim($path, '/');
@@ -38,41 +50,202 @@ if (!function_exists('current_path')) {
 }
 
 if (!function_exists('is_active')) {
-    /** Return 'active' if the current path matches. */
     function is_active(string $path, bool $exact = true): string
     {
         $cur = current_path();
-        if ($exact) {
-            return $cur === $path ? 'active' : '';
-        }
+        if ($exact) return $cur === $path ? 'active' : '';
         return str_starts_with($cur, $path) ? 'active' : '';
+    }
+}
+
+if (!function_exists('slugify')) {
+    /**
+     * Build a URL slug. Persian characters are kept as-is (URL-safe in UTF-8),
+     * spaces become dashes, ASCII is lower-cased.
+     */
+    function slugify(string $text): string
+    {
+        $text = trim($text);
+        // Replace whitespace and common separators with dash
+        $text = preg_replace('/[\s_\-\/\\\\]+/u', '-', $text) ?? $text;
+        // Remove characters that are unsafe in URLs (keep letters, digits, dash, Persian/Arabic ranges)
+        $text = preg_replace('/[^\p{L}\p{N}\-]+/u', '', $text) ?? $text;
+        $text = preg_replace('/-+/', '-', $text) ?? $text;
+        $text = trim($text, '-');
+        // Lowercase ASCII portion only
+        $text = mb_strtolower($text, 'UTF-8');
+        return $text === '' ? 'item' : $text;
+    }
+}
+
+if (!function_exists('unique_slug')) {
+    /**
+     * Ensure slug is unique within a table (column `slug`). Appends -2, -3, ...
+     */
+    function unique_slug(string $slug, string $table, ?int $ignoreId = null): string
+    {
+        $base = $slug;
+        $i = 1;
+        while (true) {
+            $candidate = $i === 1 ? $base : ($base . '-' . $i);
+            $sql = "SELECT id FROM `{$table}` WHERE slug = ?" . ($ignoreId ? ' AND id <> ?' : '') . ' LIMIT 1';
+            $params = [$candidate];
+            if ($ignoreId) $params[] = $ignoreId;
+            $row = Database::fetch($sql, $params);
+            if (!$row) return $candidate;
+            $i++;
+        }
+    }
+}
+
+if (!function_exists('format_date_fa')) {
+    function format_date_fa(?string $datetime): string
+    {
+        if (!$datetime) return '-';
+        $ts = strtotime($datetime);
+        if (!$ts) return '-';
+        $en = ['0','1','2','3','4','5','6','7','8','9'];
+        $fa = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+        return str_replace($en, $fa, date('Y/m/d H:i', $ts));
+    }
+}
+
+if (!function_exists('excerpt')) {
+    function excerpt(?string $text, int $words = 30): string
+    {
+        $text = trim(strip_tags((string)$text));
+        if ($text === '') return '';
+        $parts = preg_split('/\s+/u', $text) ?: [];
+        if (count($parts) <= $words) return $text;
+        return implode(' ', array_slice($parts, 0, $words)) . '…';
+    }
+}
+
+if (!function_exists('sanitize_html')) {
+    /**
+     * Basic HTML sanitizer: strips <script>, <style>, <iframe> and on* event attributes.
+     * Allowed tags = whitelist below.
+     */
+    function sanitize_html(string $html): string
+    {
+        $allowed = '<p><br><strong><b><em><i><u><a><ul><ol><li><h2><h3><h4><blockquote><img><figure><figcaption><pre><code><hr><div><span>';
+        $clean = strip_tags($html, $allowed);
+        // Remove on* event attributes and javascript: URLs
+        $clean = preg_replace('/\son\w+\s*=\s*"(?:[^"\\\\]|\\\\.)*"/i', '', $clean) ?? $clean;
+        $clean = preg_replace("/\son\w+\s*=\s*'(?:[^'\\\\]|\\\\.)*'/i", '', $clean) ?? $clean;
+        $clean = preg_replace('/\son\w+\s*=\s*[^\s>]+/i', '', $clean) ?? $clean;
+        $clean = preg_replace('/javascript\s*:/i', '', $clean) ?? $clean;
+        return $clean;
+    }
+}
+
+if (!function_exists('flash')) {
+    function flash(string $key, ?string $value = null): ?string
+    {
+        if ($value !== null) {
+            $_SESSION['_flash'][$key] = $value;
+            return null;
+        }
+        $v = $_SESSION['_flash'][$key] ?? null;
+        if ($v !== null) unset($_SESSION['_flash'][$key]);
+        return $v;
+    }
+}
+
+if (!function_exists('old')) {
+    function old(string $key, string $default = ''): string
+    {
+        return isset($_SESSION['_old'][$key]) ? (string)$_SESSION['_old'][$key] : $default;
+    }
+}
+
+if (!function_exists('keep_old')) {
+    function keep_old(array $data): void
+    {
+        $_SESSION['_old'] = $data;
+    }
+}
+
+if (!function_exists('clear_old')) {
+    function clear_old(): void
+    {
+        unset($_SESSION['_old']);
+    }
+}
+
+if (!function_exists('site_setting')) {
+    /**
+     * Read a setting value from DB (cached). Falls back to $default.
+     */
+    function site_setting(string $key, ?string $default = null): ?string
+    {
+        static $cache = null;
+        if ($cache === null) {
+            $cache = [];
+            try {
+                if (Database::isConfigured()) {
+                    foreach (Database::fetchAll('SELECT setting_key, setting_value FROM site_settings') as $row) {
+                        $cache[$row['setting_key']] = $row['setting_value'];
+                    }
+                }
+            } catch (Throwable $e) {
+                $cache = [];
+            }
+        }
+        return array_key_exists($key, $cache) ? $cache[$key] : $default;
     }
 }
 
 if (!function_exists('site_services')) {
     /**
-     * Canonical list of services.
-     * In Phase 3 this will be loaded from the database.
-     *
+     * Canonical service list. Tries DB first, falls back to static array.
      * @return array<int, array{slug:string,title:string,short:string,icon:string}>
      */
     function site_services(): array
     {
-        return [
-            ['slug' => 'network-support',      'title' => 'پشتیبانی شبکه',            'short' => 'پشتیبانی پیوسته و حرفه‌ای زیرساخت شبکه شرکت‌ها و سازمان‌ها.', 'icon' => 'support'],
-            ['slug' => 'network-installation', 'title' => 'نصب و راه‌اندازی شبکه',     'short' => 'طراحی، اجرا و راه‌اندازی شبکه‌های سیمی و بی‌سیم سازمانی.',    'icon' => 'install'],
-            ['slug' => 'voip',                 'title' => 'ویپ و سانترال',            'short' => 'پیاده‌سازی سیستم‌های تلفنی VoIP و سانترال تحت شبکه.',        'icon' => 'voip'],
-            ['slug' => 'digital-marketing',    'title' => 'دیجیتال مارکتینگ',         'short' => 'سئو، تبلیغات و طراحی سایت برای کسب‌وکارهای جدی.',           'icon' => 'marketing'],
-            ['slug' => 'network-security',     'title' => 'امنیت شبکه و سرور',        'short' => 'تأمین امنیت زیرساخت شبکه، فایروال، VPN و سرور.',           'icon' => 'security'],
-            ['slug' => 'server-support',       'title' => 'پشتیبانی سرور',            'short' => 'نگهداری، مانیتورینگ و پشتیبانی تخصصی سرورهای سازمانی.',     'icon' => 'server'],
-            ['slug' => 'active-network',       'title' => 'خدمات اکتیو شبکه',         'short' => 'نصب و پیکربندی تجهیزات اکتیو مانند سوئیچ، روتر و فایروال.', 'icon' => 'active'],
-            ['slug' => 'passive-network',      'title' => 'خدمات پسیو شبکه',          'short' => 'کابل‌کشی، فیبر نوری و اجرای استاندارد زیرساخت پسیو.',       'icon' => 'passive'],
+        static $cache = null;
+        if ($cache !== null) return $cache;
+
+        $iconMap = [
+            'network-support'=>'support','network-installation'=>'install','voip'=>'voip',
+            'digital-marketing'=>'marketing','network-security'=>'security','server-support'=>'server',
+            'active-network'=>'active','passive-network'=>'passive',
         ];
+
+        try {
+            if (Database::isConfigured()) {
+                $rows = Database::fetchAll(
+                    "SELECT slug, title, excerpt FROM services WHERE status='published' ORDER BY sort_order ASC, id ASC"
+                );
+                if ($rows) {
+                    $cache = array_map(fn($r) => [
+                        'slug'  => $r['slug'],
+                        'title' => $r['title'],
+                        'short' => (string)($r['excerpt'] ?? ''),
+                        'icon'  => $iconMap[$r['slug']] ?? 'check',
+                    ], $rows);
+                    return $cache;
+                }
+            }
+        } catch (Throwable $e) {
+            // fall through to static list
+        }
+
+        $cache = [
+            ['slug'=>'network-support','title'=>'پشتیبانی شبکه','short'=>'پشتیبانی پیوسته و حرفه‌ای زیرساخت شبکه شرکت‌ها و سازمان‌ها.','icon'=>'support'],
+            ['slug'=>'network-installation','title'=>'نصب و راه‌اندازی شبکه','short'=>'طراحی، اجرا و راه‌اندازی شبکه‌های سیمی و بی‌سیم سازمانی.','icon'=>'install'],
+            ['slug'=>'voip','title'=>'ویپ و سانترال','short'=>'پیاده‌سازی سیستم‌های تلفنی VoIP و سانترال تحت شبکه.','icon'=>'voip'],
+            ['slug'=>'digital-marketing','title'=>'دیجیتال مارکتینگ','short'=>'سئو، تبلیغات و طراحی سایت برای کسب‌وکارهای جدی.','icon'=>'marketing'],
+            ['slug'=>'network-security','title'=>'امنیت شبکه و سرور','short'=>'تأمین امنیت زیرساخت شبکه، فایروال، VPN و سرور.','icon'=>'security'],
+            ['slug'=>'server-support','title'=>'پشتیبانی سرور','short'=>'نگهداری، مانیتورینگ و پشتیبانی تخصصی سرورهای سازمانی.','icon'=>'server'],
+            ['slug'=>'active-network','title'=>'خدمات اکتیو شبکه','short'=>'نصب و پیکربندی تجهیزات اکتیو مانند سوئیچ، روتر و فایروال.','icon'=>'active'],
+            ['slug'=>'passive-network','title'=>'خدمات پسیو شبکه','short'=>'کابل‌کشی، فیبر نوری و اجرای استاندارد زیرساخت پسیو.','icon'=>'passive'],
+        ];
+        return $cache;
     }
 }
 
 if (!function_exists('icon_svg')) {
-    /** Inline SVG icons keyed by name. Lightweight, no external dependency. */
     function icon_svg(string $name, int $size = 28): string
     {
         $icons = [
@@ -93,6 +266,17 @@ if (!function_exists('icon_svg')) {
             'shield'   => '<path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5l-8-3z"/>',
             'bolt'     => '<path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/>',
             'star'     => '<path d="m12 2 3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.27 5.82 22 7 14.14l-5-4.87 6.91-1.01L12 2z"/>',
+            'edit'     => '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>',
+            'trash'    => '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>',
+            'plus'     => '<path d="M12 5v14M5 12h14"/>',
+            'logout'   => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+            'menu'     => '<path d="M3 6h18M3 12h18M3 18h18"/>',
+            'inbox'    => '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+            'image'    => '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+            'tag'      => '<path d="M20.59 13.41 13.41 20.59a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7" y2="7"/>',
+            'folder'   => '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+            'settings' => '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+            'doc'      => '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
         ];
         $body = $icons[$name] ?? $icons['check'];
         return '<svg width="' . $size . '" height="' . $size . '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $body . '</svg>';

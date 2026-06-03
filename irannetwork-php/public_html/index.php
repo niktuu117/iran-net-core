@@ -60,6 +60,7 @@ $router = new Router();
 $router->get('/',                              ['PagesController', 'home']);
 $router->get('/about',                         ['PagesController', 'about']);
 $router->get('/contact',                       ['PagesController', 'contact']);
+$router->post('/contact',                      ['PagesController', 'submitContact']);
 $router->get('/faq',                           ['PagesController', 'faq']);
 $router->get('/rules',                         ['PagesController', 'rules']);
 $router->get('/blog',                          ['PagesController', 'blog']);

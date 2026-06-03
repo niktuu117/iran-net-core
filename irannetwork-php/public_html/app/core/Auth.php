@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Auth skeleton — fully implemented in Phase 2.
+ * Auth — handles admin login/logout via MySQL users table.
  */
 class Auth
 {
@@ -16,10 +16,41 @@ class Auth
         return $_SESSION['user'] ?? null;
     }
 
+    public static function id(): ?int
+    {
+        return isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+    }
+
+    public static function isAdmin(): bool
+    {
+        $u = self::user();
+        return $u && ($u['role'] ?? '') === 'admin';
+    }
+
+    /**
+     * Attempt to log in. Returns user array on success, null on failure.
+     */
+    public static function attempt(string $email, string $password): ?array
+    {
+        $user = Database::fetch(
+            'SELECT id, name, email, password_hash, role, status FROM users WHERE email = ? LIMIT 1',
+            [strtolower(trim($email))]
+        );
+        if (!$user || $user['status'] !== 'active') {
+            return null;
+        }
+        if (!password_verify($password, $user['password_hash'])) {
+            return null;
+        }
+        self::login($user);
+        return $user;
+    }
+
     public static function login(array $user): void
     {
         session_regenerate_id(true);
-        $_SESSION['user_id'] = $user['id'] ?? null;
+        unset($user['password_hash']);
+        $_SESSION['user_id'] = (int)$user['id'];
         $_SESSION['user']    = $user;
     }
 
@@ -33,9 +64,17 @@ class Auth
         session_destroy();
     }
 
-    public static function requireLogin(string $redirect = '/admin/login'): void
+    public static function requireLogin(string $redirect = '/admin/login.php'): void
     {
         if (!self::check()) {
+            header('Location: ' . $redirect);
+            exit;
+        }
+    }
+
+    public static function requireAdmin(string $redirect = '/admin/login.php'): void
+    {
+        if (!self::check() || !self::isAdmin()) {
             header('Location: ' . $redirect);
             exit;
         }

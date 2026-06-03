@@ -11,21 +11,29 @@
         <div class="contact-info">
             <h2>راه‌های ارتباطی</h2>
 
+            <?php
+            $phoneT = site_setting('phone_tehran',  defined('CONTACT_PHONE_TEHRAN') ? CONTACT_PHONE_TEHRAN : '02191014664');
+            $phoneI = site_setting('phone_isfahan', defined('CONTACT_PHONE_ISFAHAN') ? CONTACT_PHONE_ISFAHAN : '03191011239');
+            $email  = site_setting('email',         defined('CONTACT_EMAIL') ? CONTACT_EMAIL : 'info@irannetwork.co');
+            $addrT  = site_setting('address_tehran',  defined('CONTACT_ADDRESS_TEHRAN') ? CONTACT_ADDRESS_TEHRAN : '');
+            $addrI  = site_setting('address_isfahan', defined('CONTACT_ADDRESS_ISFAHAN') ? CONTACT_ADDRESS_ISFAHAN : '');
+            ?>
+
             <div class="contact-block">
                 <h4><?= icon_svg('pin', 20) ?> دفتر تهران</h4>
-                <p><?= e(defined('CONTACT_ADDRESS_TEHRAN') ? CONTACT_ADDRESS_TEHRAN : 'تهران پارس، فلکه اول، خیابان بابا یوسفی، پلاک ۳') ?></p>
-                <p><a dir="ltr" href="tel:<?= e(defined('CONTACT_PHONE_TEHRAN') ? CONTACT_PHONE_TEHRAN : '02191014664') ?>">021-91014664</a></p>
+                <p><?= e($addrT) ?></p>
+                <p><a dir="ltr" href="tel:<?= e($phoneT) ?>"><?= e($phoneT) ?></a></p>
             </div>
 
             <div class="contact-block">
                 <h4><?= icon_svg('pin', 20) ?> دفتر اصفهان</h4>
-                <p><?= e(defined('CONTACT_ADDRESS_ISFAHAN') ? CONTACT_ADDRESS_ISFAHAN : 'اصفهان، شاهین شهر، خیابان امام علی، فرعی ۲ شرقی، پلاک ۲۷') ?></p>
-                <p><a dir="ltr" href="tel:<?= e(defined('CONTACT_PHONE_ISFAHAN') ? CONTACT_PHONE_ISFAHAN : '03191011239') ?>">031-91011239</a></p>
+                <p><?= e($addrI) ?></p>
+                <p><a dir="ltr" href="tel:<?= e($phoneI) ?>"><?= e($phoneI) ?></a></p>
             </div>
 
             <div class="contact-block">
                 <h4><?= icon_svg('mail', 20) ?> ایمیل</h4>
-                <p><a href="mailto:<?= e(defined('CONTACT_EMAIL') ? CONTACT_EMAIL : 'info@irannetwork.co') ?>"><?= e(defined('CONTACT_EMAIL') ? CONTACT_EMAIL : 'info@irannetwork.co') ?></a></p>
+                <p><a href="mailto:<?= e($email) ?>"><?= e($email) ?></a></p>
             </div>
 
             <div class="contact-block">
@@ -35,45 +43,53 @@
             </div>
         </div>
 
-        <form class="contact-form" id="contactForm" novalidate>
+        <form class="contact-form" id="contactForm" method="post" action="/contact" novalidate>
+            <?= Csrf::field() ?>
             <h2>ارسال پیام</h2>
-            <p class="form-note">فعلاً فرم تنها فرانت‌اند است؛ ذخیره‌سازی در فاز ۲ فعال می‌شود.</p>
+
+            <?php $ok = flash('contact_success'); $err = flash('contact_error'); ?>
+            <?php if ($ok): ?>
+                <p class="form-feedback success" style="color:#16a34a"><?= e($ok) ?></p>
+            <?php endif; ?>
+            <?php if ($err): ?>
+                <p class="form-feedback error" style="color:#dc2626"><?= e($err) ?></p>
+            <?php endif; ?>
 
             <div class="form-row">
                 <div class="form-group">
                     <label for="name">نام و نام خانوادگی <span>*</span></label>
-                    <input type="text" id="name" name="name" required minlength="2" maxlength="80">
+                    <input type="text" id="name" name="name" required minlength="2" maxlength="80" value="<?= e(old('name')) ?>">
                 </div>
                 <div class="form-group">
                     <label for="phone">شماره تماس <span>*</span></label>
-                    <input type="tel" id="phone" name="phone" required pattern="^[0-9+\-\s]{7,20}$" dir="ltr">
+                    <input type="tel" id="phone" name="phone" required pattern="^[0-9+\-\s]{7,20}$" dir="ltr" value="<?= e(old('phone')) ?>">
                 </div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label for="email">ایمیل (اختیاری)</label>
-                    <input type="email" id="email" name="email" maxlength="120" dir="ltr">
+                    <input type="email" id="email" name="email" maxlength="120" dir="ltr" value="<?= e(old('email')) ?>">
                 </div>
                 <div class="form-group">
                     <label for="service">نوع سرویس</label>
                     <select id="service" name="service">
                         <option value="">انتخاب کنید…</option>
                         <?php foreach (site_services() as $s): ?>
-                        <option value="<?= e($s['slug']) ?>"><?= e($s['title']) ?></option>
+                        <option value="<?= e($s['slug']) ?>" <?= old('service')===$s['slug']?'selected':'' ?>><?= e($s['title']) ?></option>
                         <?php endforeach; ?>
-                        <option value="other">سایر</option>
+                        <option value="other" <?= old('service')==='other'?'selected':'' ?>>سایر</option>
                     </select>
                 </div>
             </div>
 
             <div class="form-group">
                 <label for="message">پیام شما <span>*</span></label>
-                <textarea id="message" name="message" rows="5" required minlength="10" maxlength="2000"></textarea>
+                <textarea id="message" name="message" rows="5" required minlength="10" maxlength="2000"><?= e(old('message')) ?></textarea>
             </div>
 
             <button type="submit" class="btn btn-primary btn-lg btn-block">ارسال پیام</button>
-            <p class="form-feedback" id="contactFeedback" role="status" aria-live="polite"></p>
         </form>
     </div>
 </section>
+<?php clear_old(); ?>

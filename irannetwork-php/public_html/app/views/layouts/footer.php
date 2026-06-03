@@ -41,27 +41,19 @@
 
             <div class="footer-col">
                 <h4>تماس با ما</h4>
+                <?php
+                $fPhoneT = site_setting('phone_tehran',  defined('CONTACT_PHONE_TEHRAN') ? CONTACT_PHONE_TEHRAN : '02191014664');
+                $fPhoneI = site_setting('phone_isfahan', defined('CONTACT_PHONE_ISFAHAN') ? CONTACT_PHONE_ISFAHAN : '03191011239');
+                $fEmail  = site_setting('email',         defined('CONTACT_EMAIL') ? CONTACT_EMAIL : 'info@irannetwork.co');
+                $fAddrT  = site_setting('address_tehran',  defined('CONTACT_ADDRESS_TEHRAN') ? CONTACT_ADDRESS_TEHRAN : '');
+                $fAddrI  = site_setting('address_isfahan', defined('CONTACT_ADDRESS_ISFAHAN') ? CONTACT_ADDRESS_ISFAHAN : '');
+                ?>
                 <ul class="footer-contact">
-                    <li>
-                        <?= icon_svg('pin', 18) ?>
-                        <span><?= e(defined('CONTACT_ADDRESS_TEHRAN') ? CONTACT_ADDRESS_TEHRAN : 'تهران پارس، فلکه اول، خیابان بابا یوسفی، پلاک ۳') ?></span>
-                    </li>
-                    <li>
-                        <?= icon_svg('pin', 18) ?>
-                        <span><?= e(defined('CONTACT_ADDRESS_ISFAHAN') ? CONTACT_ADDRESS_ISFAHAN : 'اصفهان، شاهین شهر، خیابان امام علی، فرعی ۲ شرقی، پلاک ۲۷') ?></span>
-                    </li>
-                    <li>
-                        <?= icon_svg('phone', 18) ?>
-                        <a dir="ltr" href="tel:<?= e(defined('CONTACT_PHONE_TEHRAN') ? CONTACT_PHONE_TEHRAN : '02191014664') ?>">021-91014664</a>
-                    </li>
-                    <li>
-                        <?= icon_svg('phone', 18) ?>
-                        <a dir="ltr" href="tel:<?= e(defined('CONTACT_PHONE_ISFAHAN') ? CONTACT_PHONE_ISFAHAN : '03191011239') ?>">031-91011239</a>
-                    </li>
-                    <li>
-                        <?= icon_svg('mail', 18) ?>
-                        <a href="mailto:<?= e(defined('CONTACT_EMAIL') ? CONTACT_EMAIL : 'info@irannetwork.co') ?>"><?= e(defined('CONTACT_EMAIL') ? CONTACT_EMAIL : 'info@irannetwork.co') ?></a>
-                    </li>
+                    <li><?= icon_svg('pin', 18) ?><span><?= e($fAddrT) ?></span></li>
+                    <li><?= icon_svg('pin', 18) ?><span><?= e($fAddrI) ?></span></li>
+                    <li><?= icon_svg('phone', 18) ?><a dir="ltr" href="tel:<?= e($fPhoneT) ?>"><?= e($fPhoneT) ?></a></li>
+                    <li><?= icon_svg('phone', 18) ?><a dir="ltr" href="tel:<?= e($fPhoneI) ?>"><?= e($fPhoneI) ?></a></li>
+                    <li><?= icon_svg('mail', 18) ?><a href="mailto:<?= e($fEmail) ?>"><?= e($fEmail) ?></a></li>
                 </ul>
             </div>
         </div>

@@ -1,0 +1,12 @@
+# Real config & secrets — never commit
+public_html/app/config/config.php
+
+# Uploaded media — keep folder structure, ignore contents
+public_html/uploads/media/*
+!public_html/uploads/media/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.log
