@@ -86,5 +86,6 @@ document.getElementById('adminMenuToggle')?.addEventListener('click', () => {
     document.getElementById('adminSidebar')?.classList.toggle('open');
 });
 </script>
+<script src="/assets/js/admin.js" defer></script>
 </body>
 </html>
