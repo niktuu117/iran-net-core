@@ -53,6 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $postModel->syncTags($postId, (array)($_POST['tags'] ?? []));
         $postModel->syncServices($postId, (array)($_POST['services'] ?? []));
+        require_once __DIR__ . '/../_seo_partial.php';
+        seo_save_from_post('post', (int)$postId);
         flash('success', $isEdit ? 'مقاله به‌روزرسانی شد.' : 'مقاله ساخته شد.');
         redirect('/admin/posts/edit.php?id=' . $postId);
     }
