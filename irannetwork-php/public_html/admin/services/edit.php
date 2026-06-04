@@ -30,6 +30,8 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     $data['slug'] = unique_slug(slugify($data['slug']), 'services', $isEdit?$id:null);
     if (!$errors) {
         if ($isEdit) $m->update($id,$data); else $id = $m->create($data);
+        require_once __DIR__.'/../_seo_partial.php';
+        seo_save_from_post('service', (int)$id);
         flash('success', $isEdit?'سرویس به‌روزرسانی شد.':'سرویس ساخته شد.');
         redirect('/admin/services/edit.php?id='.$id);
     }
