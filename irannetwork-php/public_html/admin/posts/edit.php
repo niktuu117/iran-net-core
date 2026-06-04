@@ -155,5 +155,7 @@ ob_start(); ?>
     <a href="/admin/posts/" class="btn btn-ghost">انصراف</a>
     <button class="btn btn-primary" type="submit"><?= $isEdit ? 'به‌روزرسانی' : 'ذخیره مقاله' ?></button>
   </div>
+
+  <?php if ($isEdit): $entityType='post'; $entityId=(int)$postId; $entityRow=$post; include __DIR__ . '/../_seo_partial.php'; endif; ?>
 </form>
 <?php $content = ob_get_clean(); require __DIR__ . '/../_layout.php';
