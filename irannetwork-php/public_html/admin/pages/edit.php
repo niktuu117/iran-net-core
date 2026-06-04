@@ -52,5 +52,6 @@ ob_start(); ?>
     <a class="btn btn-ghost" href="/admin/pages/">انصراف</a>
     <button class="btn btn-primary"><?= $isEdit?'به‌روزرسانی':'ذخیره' ?></button>
   </div>
+  <?php if ($isEdit): $entityType='page'; $entityId=(int)$id; $entityRow=$row; include __DIR__.'/../_seo_partial.php'; endif; ?>
 </form>
 <?php $content=ob_get_clean(); require __DIR__.'/../_layout.php';
