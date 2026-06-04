@@ -142,3 +142,5 @@ function seo_save_from_post(string $entityType, int $entityId): void
     ];
     (new SeoMeta())->upsert($entityType, $entityId, $data);
 }
+}
+
