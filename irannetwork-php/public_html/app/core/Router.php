@@ -2,22 +2,28 @@
 declare(strict_types=1);
 
 /**
- * Minimal PHP Router.
- * Supports static GET/POST routes. Dynamic params can be added later (Phase 3).
+ * Router — supports static + dynamic {param} routes and a global
+ * redirect table lookup before dispatch.
  */
 class Router
 {
-    /** @var array<string, array<string, array{0:string,1:string}>> */
+    /** @var array<string, array<int, array{pattern:string,keys:array<int,string>,handler:array{0:string,1:string}|callable}>> */
     private array $routes = ['GET' => [], 'POST' => []];
 
-    public function get(string $path, array $handler): void
-    {
-        $this->routes['GET'][$this->normalize($path)] = $handler;
-    }
+    public function get(string $path, $handler): void  { $this->add('GET',  $path, $handler); }
+    public function post(string $path, $handler): void { $this->add('POST', $path, $handler); }
 
-    public function post(string $path, array $handler): void
+    private function add(string $method, string $path, $handler): void
     {
-        $this->routes['POST'][$this->normalize($path)] = $handler;
+        $path = $this->normalize($path);
+        $keys = [];
+        // Convert {slug} → ([^/]+)
+        $pattern = preg_replace_callback('#\{([a-zA-Z_][a-zA-Z0-9_]*)\}#', function ($m) use (&$keys) {
+            $keys[] = $m[1];
+            return '([^/]+)';
+        }, $path);
+        $pattern = '#^' . $pattern . '$#u';
+        $this->routes[$method][] = ['pattern' => $pattern, 'keys' => $keys, 'handler' => $handler];
     }
 
     public function dispatch(string $url): void
@@ -25,28 +31,49 @@ class Router
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
         $path   = $this->normalize($url);
 
-        $handler = $this->routes[$method][$path] ?? null;
+        // 1) Redirect lookup (DB-backed). Silent on errors.
+        try {
+            if (class_exists('Redirect') && Database::isConfigured()) {
+                $hit = (new Redirect())->findActive($path);
+                if ($hit) {
+                    $code = in_array((int)$hit['status_code'], [301, 302, 307, 308], true) ? (int)$hit['status_code'] : 301;
+                    header('Location: ' . $hit['new_url'], true, $code);
+                    exit;
+                }
+            }
+        } catch (Throwable $e) { /* ignore in production */ }
 
-        if ($handler === null) {
-            $this->renderNotFound();
-            return;
+        // 2) Route match
+        foreach ($this->routes[$method] ?? [] as $route) {
+            if (preg_match($route['pattern'], $path, $m)) {
+                $params = [];
+                foreach ($route['keys'] as $i => $key) {
+                    $params[$key] = rawurldecode($m[$i + 1] ?? '');
+                }
+                $this->invoke($route['handler'], $params);
+                return;
+            }
         }
 
-        [$controllerName, $action] = $handler;
+        $this->renderNotFound();
+    }
 
-        if (!class_exists($controllerName)) {
-            $this->renderNotFound();
+    /** @param array{0:string,1:string}|callable $handler */
+    private function invoke($handler, array $params): void
+    {
+        if (is_array($handler) && count($handler) === 2) {
+            [$controllerName, $action] = $handler;
+            if (!class_exists($controllerName)) { $this->renderNotFound(); return; }
+            $controller = new $controllerName();
+            if (!method_exists($controller, $action)) { $this->renderNotFound(); return; }
+            $controller->{$action}($params);
             return;
         }
-
-        $controller = new $controllerName();
-
-        if (!method_exists($controller, $action)) {
-            $this->renderNotFound();
+        if (is_callable($handler)) {
+            $handler($params);
             return;
         }
-
-        $controller->{$action}();
+        $this->renderNotFound();
     }
 
     private function normalize(string $path): string
