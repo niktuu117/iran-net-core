@@ -114,6 +114,7 @@ $g = fn(string $k, $d = '') => $seoMeta[$k] ?? $d;
 /**
  * Helper used by edit handlers after main save.
  */
+if (!function_exists('seo_save_from_post')) {
 function seo_save_from_post(string $entityType, int $entityId): void
 {
     if ($entityId <= 0) return;
