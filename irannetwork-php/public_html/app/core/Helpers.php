@@ -27,6 +27,20 @@ if (!function_exists('url')) {
     }
 }
 
+if (!function_exists('site_url')) {
+    /** Absolute site URL (no trailing slash). Falls back to APP_URL or scheme+host. */
+    function site_url(string $path = '/'): string
+    {
+        $base = site_setting('site_url', defined('APP_URL') ? APP_URL : '');
+        if (!$base) {
+            $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $base   = $scheme . '://' . $host;
+        }
+        return rtrim($base, '/') . '/' . ltrim($path, '/');
+    }
+}
+
 if (!function_exists('admin_url')) {
     function admin_url(string $path = ''): string
     {

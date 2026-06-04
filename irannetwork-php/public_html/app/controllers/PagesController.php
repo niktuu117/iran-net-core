@@ -3,41 +3,77 @@ declare(strict_types=1);
 
 class PagesController extends Controller
 {
-    public function home(): void
+    public function home(array $params = []): void
     {
+        $featured = Database::fetchAll(
+            "SELECT id, title, slug, excerpt, featured_image FROM posts
+             WHERE status='published' AND (featured=1 OR show_on_homepage=1)
+             ORDER BY published_at DESC LIMIT 3"
+        );
+        $services = Database::fetchAll(
+            "SELECT title, slug, excerpt FROM services WHERE status='published'
+             ORDER BY sort_order ASC LIMIT 8"
+        );
+        $seo = Seo::build(['title'=>'ایران نتورک'], null, [
+            'title'=>'ایران نتورک | خدمات تخصصی شبکه، سرور و امنیت',
+            'description'=>'ایران نتورک ارائه‌دهنده خدمات حرفه‌ای شبکه، پشتیبانی سرور، امنیت، ویپ و دیجیتال مارکتینگ.',
+            'canonical'=>site_url('/'),
+        ]);
         $this->view('public/home', [
-            'pageTitle'       => 'ایران نتورک | خدمات تخصصی شبکه، سرور و امنیت',
-            'pageDescription' => 'ایران نتورک ارائه‌دهنده خدمات حرفه‌ای شبکه، پشتیبانی سرور، امنیت، ویپ و دیجیتال مارکتینگ برای کسب‌وکارها و سازمان‌ها در تهران و اصفهان.',
-            'canonical'       => '/',
+            'seo'=>$seo,'pageTitle'=>'ایران نتورک',
+            'featuredPosts'=>$featured,'homeServices'=>$services,
         ]);
     }
 
-    public function about(): void
+    /** Generic CMS page by slug (about, faq, rules, contact, custom). */
+    public function dynamicPage(array $params): void
     {
-        $this->view('public/about', [
-            'pageTitle'       => 'درباره ایران نتورک | شرکت تخصصی خدمات شبکه و سرور',
-            'pageDescription' => 'با ایران نتورک، تجربه، تخصص و تعهد در حوزه خدمات شبکه، سرور و امنیت سازمانی آشنا شوید.',
-            'canonical'       => '/about',
+        $slug = (string)($params['slug'] ?? '');
+        // reserved slugs handled by their own routes
+        if (in_array($slug, ['blog','services','admin','sitemap.xml','robots.txt','404','uploads','assets','contact'], true)) {
+            $this->notFound(); return;
+        }
+        $page = (new Page())->findBySlug($slug);
+        if (!$page || $page['status'] !== 'published') { $this->notFound(); return; }
+
+        $faqs = Database::fetchAll('SELECT question, answer FROM faqs WHERE page_id=? AND is_active=1 ORDER BY sort_order ASC', [(int)$page['id']]);
+        $meta = (new SeoMeta())->findFor('page', (int)$page['id']);
+        $seo = Seo::build($page, $meta, [
+            'title'      => ($page['title'] ?? '') . ' | ایران نتورک',
+            'description'=> excerpt($page['content'] ?? '', 30),
+            'canonical'  => site_url('/' . $page['slug']),
+        ]);
+
+        $schemas = [Seo::breadcrumbs([
+            ['name'=>'خانه','url'=>site_url('/')],
+            ['name'=>$page['title'],'url'=>site_url('/'.$page['slug'])],
+        ])];
+        if ($faqs) $schemas[] = Seo::faqPage($faqs);
+
+        $this->view('public/page-show', [
+            'seo'=>$seo,'pageTitle'=>$page['title'],'page'=>$page,'faqs'=>$faqs,'schemas'=>$schemas,
         ]);
     }
 
-    public function contact(): void
+    public function contact(array $params = []): void
     {
-        $this->view('public/contact', [
-            'pageTitle'       => 'تماس با ایران نتورک | مشاوره و درخواست خدمات',
-            'pageDescription' => 'برای دریافت مشاوره رایگان خدمات شبکه، سرور، امنیت و ویپ با کارشناسان ایران نتورک در تهران و اصفهان در ارتباط باشید.',
-            'canonical'       => '/contact',
+        // Contact remains a dedicated view (form + info)
+        $page = (new Page())->findBySlug('contact');
+        $meta = $page ? (new SeoMeta())->findFor('page', (int)$page['id']) : null;
+        $seo = Seo::build($page ?? ['title'=>'تماس با ما','content'=>''], $meta, [
+            'title'=>'تماس با ایران نتورک | مشاوره و درخواست خدمات',
+            'description'=>'برای دریافت مشاوره خدمات شبکه، سرور، امنیت و ویپ با کارشناسان ایران نتورک در ارتباط باشید.',
+            'canonical'=>site_url('/contact'),
         ]);
+        $this->view('public/contact', ['seo'=>$seo,'pageTitle'=>'تماس با ما']);
     }
 
-    /** POST /contact — store message and redirect with flash. */
-    public function submitContact(): void
+    public function submitContact(array $params = []): void
     {
         if (!Csrf::verify($_POST[Csrf::name()] ?? null)) {
             flash('contact_error', 'توکن امنیتی نامعتبر است. لطفاً صفحه را تازه کنید.');
             redirect('/contact');
         }
-
         $name    = trim((string)($_POST['name'] ?? ''));
         $phone   = trim((string)($_POST['phone'] ?? ''));
         $email   = trim((string)($_POST['email'] ?? ''));
@@ -55,7 +91,6 @@ class PagesController extends Controller
             flash('contact_error', implode(' ', $errors));
             redirect('/contact');
         }
-
         try {
             if (Database::isConfigured()) {
                 (new ContactMessage())->create([
@@ -73,42 +108,15 @@ class PagesController extends Controller
         redirect('/contact');
     }
 
-
-    public function faq(): void
-    {
-        $this->view('public/faq', [
-            'pageTitle'       => 'سوالات متداول | ایران نتورک',
-            'pageDescription' => 'پاسخ پرسش‌های پرتکرار درباره خدمات شبکه، پشتیبانی سرور، امنیت و قراردادهای ایران نتورک.',
-            'canonical'       => '/faq',
-        ]);
-    }
-
-    public function rules(): void
-    {
-        $this->view('public/rules', [
-            'pageTitle'       => 'قوانین و مقررات | ایران نتورک',
-            'pageDescription' => 'قوانین و مقررات استفاده از خدمات و وب‌سایت ایران نتورک.',
-            'canonical'       => '/rules',
-        ]);
-    }
-
-    public function blog(): void
-    {
-        $this->view('public/blog', [
-            'pageTitle'       => 'مقالات و آموزش‌ها | ایران نتورک',
-            'pageDescription' => 'مقالات تخصصی درباره شبکه، سرور، امنیت، ویپ و دیجیتال مارکتینگ از تیم ایران نتورک.',
-            'canonical'       => '/blog',
-        ]);
-    }
-
-    public function notFound(): void
+    public function notFound(array $params = []): void
     {
         http_response_code(404);
-        $this->view('public/404', [
-            'pageTitle'       => 'صفحه یافت نشد | ایران نتورک',
-            'pageDescription' => 'صفحه‌ای که به دنبال آن هستید پیدا نشد.',
-            'canonical'       => '/404',
-            'noindex'         => true,
+        $seo = Seo::build(['title'=>'یافت نشد','content'=>''], null, [
+            'title'=>'صفحه یافت نشد | ایران نتورک',
+            'description'=>'صفحه‌ای که به دنبال آن هستید پیدا نشد.',
+            'canonical'=>site_url('/404'),
         ]);
+        $seo['robots'] = 'noindex,follow';
+        $this->view('public/404', ['seo'=>$seo,'pageTitle'=>'یافت نشد']);
     }
 }

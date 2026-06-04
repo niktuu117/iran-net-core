@@ -30,6 +30,8 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     $data['slug'] = unique_slug(slugify($data['slug']), 'services', $isEdit?$id:null);
     if (!$errors) {
         if ($isEdit) $m->update($id,$data); else $id = $m->create($data);
+        require_once __DIR__.'/../_seo_save.php';
+        seo_save_from_post('service', (int)$id);
         flash('success', $isEdit?'سرویس به‌روزرسانی شد.':'سرویس ساخته شد.');
         redirect('/admin/services/edit.php?id='.$id);
     }
@@ -58,5 +60,6 @@ ob_start(); ?>
     <a class="btn btn-ghost" href="/admin/services/">انصراف</a>
     <button class="btn btn-primary"><?= $isEdit?'به‌روزرسانی':'ذخیره' ?></button>
   </div>
+  <?php if ($isEdit): $entityType='service'; $entityId=(int)$id; $entityRow=$row; include __DIR__.'/../_seo_partial.php'; endif; ?>
 </form>
 <?php $content=ob_get_clean(); require __DIR__.'/../_layout.php';

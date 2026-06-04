@@ -52,6 +52,7 @@ $is = fn(string $p) => str_starts_with($cur, $p) ? 'active' : '';
         <a href="/admin/media/"          class="<?= $is('/admin/media') ?>"><?= icon_svg('image',18) ?> رسانه‌ها</a>
         <a href="/admin/faqs/"           class="<?= $is('/admin/faqs') ?>"><?= icon_svg('star',18) ?> سوالات متداول</a>
         <a href="/admin/messages/"       class="<?= $is('/admin/messages') ?>"><?= icon_svg('inbox',18) ?> پیام‌های تماس <?php if ($unread): ?><span class="badge"><?= (int)$unread ?></span><?php endif; ?></a>
+        <a href="/admin/redirects/"      class="<?= $is('/admin/redirects') ?>"><?= icon_svg('arrow',18) ?> ریدایرکت‌ها</a>
         <a href="/admin/settings/"       class="<?= $is('/admin/settings') ?>"><?= icon_svg('settings',18) ?> تنظیمات سایت</a>
     </nav>
     <div class="admin-sidebar-foot">

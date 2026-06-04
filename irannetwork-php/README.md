@@ -6,239 +6,211 @@
 
 ---
 
-## فهرست
-- [وضعیت فاز ۲](#وضعیت-فاز-۲)
-- [تکنولوژی‌ها](#تکنولوژیها)
-- [ساختار پوشه‌ها](#ساختار-پوشهها)
-- [نصب روی cPanel (گام به گام)](#نصب-روی-cpanel-گام-به-گام)
-- [مسیرهای پنل مدیریت](#مسیرهای-پنل-مدیریت)
-- [جدول‌های دیتابیس](#جدولهای-دیتابیس)
-- [رسانه‌ها و آپلود](#رسانهها-و-آپلود)
-- [بکاپ‌گیری](#بکاپگیری)
-- [آماده برای فاز ۳](#آماده-برای-فاز-۳)
-- [آنچه هنوز ساخته نشده](#آنچه-هنوز-ساخته-نشده)
-- [محدودیت محیط Lovable](#محدودیت-محیط-lovable)
+## وضعیت پروژه
+
+- ✅ **فاز ۱** — Foundation، طراحی، صفحات استاتیک
+- ✅ **فاز ۲** — دیتابیس، پنل ادمین، CRUDها، آپلود رسانه، فرم تماس
+- ✅ **فاز ۳** — **محتوای داینامیک + ماژول سئو + sitemap + redirects + Schema.org**
+- ⏳ فاز ۴ (آینده) — کش پیشرفته، نقش‌ها، چندزبانه، آنالیتیکس و …
 
 ---
 
-## وضعیت فاز ۲
+## فاز ۳ — چه چیزی اضافه شد؟
 
-فاز ۲ شامل دیتابیس واقعی، پنل ادمین فارسی RTL و CRUDهای CMS است.
+### ۱. مسیرهای داینامیک (Dynamic Routing)
+- `/` — صفحه اصلی (با مقالات Featured از DB)
+- `/blog` — لیست مقالات با pagination
+- `/blog/{slug}` — صفحه مقاله از DB (با نویسنده، دسته، برچسب، سرویس مرتبط، FAQ، مقالات مرتبط)
+- `/services` — لیست سرویس‌ها از DB
+- `/services/{slug}` — جزئیات سرویس از DB (با FAQ، مقالات مرتبط، سایر سرویس‌ها)
+- `/category/{slug}` — مقالات یک دسته
+- `/tag/{slug}` — مقالات یک برچسب
+- `/contact` — فرم تماس
+- `/{page-slug}` — هر صفحه‌ی CMS از جدول `pages` (about, faq, rules, …)
+- `/404` — صفحه یافت نشد سفارشی
 
-**اضافه‌شده در فاز ۲:**
-- ✅ Schema کامل MySQL/MariaDB (`database/schema.sql`)
-- ✅ Seed اولیه (سرویس‌ها، صفحات، دسته‌ها، تنظیمات): `database/seed.sql`
-- ✅ صفحه‌ی setup امن برای ساخت اولین کاربر admin
-- ✅ سیستم login / logout با Bcrypt + CSRF + session regenerate
-- ✅ پنل مدیریت کامل RTL (dashboard + sidebar + topbar + flash)
-- ✅ CRUD برای: مقاله‌ها، سرویس‌ها، صفحات، دسته‌بندی‌ها، برچسب‌ها، رسانه‌ها، سوالات متداول، پیام‌های تماس، تنظیمات سایت
-- ✅ Rich Text Editor ساده (H2/H3/Bold/Link/UL/Quote/CTA) با sanitize پایه
-- ✅ آپلود امن تصویر (jpg/png/webp/svg) با بررسی mime type واقعی، نام فایل امن و جلوگیری از اجرای PHP در پوشه‌ی uploads
-- ✅ ذخیره‌ی فرم تماس عمومی در دیتابیس (`contact_messages`)
-- ✅ خواندن خودکار شماره‌ها و آدرس‌ها از `site_settings` در footer و صفحه تماس
-- ✅ مدل‌های PDO سبک (`BaseModel`, `Post`, `Service`, `Page`, `Category`, `Tag`, `Media`, `Faq`, `ContactMessage`, `SiteSetting`, `User`)
+Router جدید از `{param}` پشتیبانی می‌کند و **قبل از match** جدول `redirects` را چک می‌کند.
 
----
+### ۲. ماژول سئو (`seo_meta`)
+جدول `seo_meta` با کلید یکتای `(entity_type, entity_id)` برای پنج موجودیت:
+`post`, `service`, `page`, `category`, `tag`
 
-## تکنولوژی‌ها
+فیلدها: seo_title, meta_description, focus_keyword, secondary_keywords, canonical_url, robots_index, robots_follow, og_title/og_description/og_image, twitter_title/twitter_description/twitter_image, schema_type, enable_schema, include_in_sitemap, sitemap_priority, sitemap_changefreq.
 
-- **PHP** 8.1+ (نیاز به `pdo_mysql`, `mbstring`, `fileinfo`)
-- **MySQL 5.7+ / MariaDB 10.3+**
-- **PDO** با prepared statements
-- HTML5 / CSS3 / Vanilla JS — بدون فریم‌ورک فرانت‌اند
-- `.htaccess` + `mod_rewrite` برای URLهای تمیز
-- فونت **Vazirmatn** از Google Fonts
+تب سئو در پنل ادمین به‌صورت partial (`admin/_seo_partial.php`) به فرم‌های ویرایش مقاله، سرویس و صفحه افزوده شده است.
 
----
+### ۳. تحلیل‌گر سئو (`SeoAnalyzer`)
+- محاسبه **امتیاز سئو (0-100)** و **امتیاز خوانایی (0-100)**
+- بررسی طول عنوان، توضیحات متا، کلمه کلیدی در عنوان/H1/H2/پاراگراف اول، طول محتوا، تعداد H1، alt تصاویر، لینک داخلی/خارجی، OG image
+- نمایش **پیشنهادهای فارسی** بالای فرم ویرایش
+- نمایش آمار (کلمات، جملات، میانگین طول جمله، …)
 
-## ساختار پوشه‌ها
+### ۴. رندر متاتگ‌ها (`Seo::renderTags`)
+Layout اصلی (`views/layouts/main.php`) از داده‌ی `Seo::build($entity, $meta, $defaults)` متاتگ‌های زیر را رندر می‌کند:
+title, description, canonical, robots, og:*, twitter:*
 
+### ۵. Schema.org (JSON-LD)
+هلپرهای آماده برای:
+- `Organization` (همیشه)
+- `Article` (در صفحه مقاله)
+- `Service` (در صفحه سرویس)
+- `FAQPage` (وقتی FAQ وجود دارد)
+- `BreadcrumbList` (در همه صفحات داخلی)
+
+### ۶. `/sitemap.xml` داینامیک
+از کنترلر `SeoController::sitemap` رندر می‌شود. شامل: home, /services, /blog, /contact + همه‌ی posts/services/pages/categories/tags که `include_in_sitemap = 1` دارند، با `lastmod`, `changefreq`, `priority` از `seo_meta`.
+
+### ۷. `/robots.txt` داینامیک
+از `SeoController::robots`:
 ```
-public_html/
-├── index.php                       # Front controller (routes static + POST /contact)
-├── .htaccess                       # rewrite + cache + security headers
-├── robots.txt
-├── assets/
-│   ├── css/main.css                # استایل سایت عمومی
-│   ├── css/admin.css               # استایل پنل ادمین
-│   ├── js/main.js
-│   └── js/admin.js                 # editor + copy + auto-slug
-├── uploads/
-│   ├── .htaccess                   # PHP execution disabled
-│   └── media/                      # تصاویر آپلود شده
-├── admin/
-│   ├── _bootstrap.php              # session + autoload + config (مشترک ادمین)
-│   ├── _layout.php                 # sidebar + topbar + flash
-│   ├── index.php                   # redirect → login/dashboard
-│   ├── setup.php                   # ساخت اولین admin (یک بار)
-│   ├── login.php  / logout.php  / dashboard.php
-│   ├── posts/      (index, create, edit, delete)
-│   ├── services/   (index, create, edit, delete)
-│   ├── pages/      (index, create, edit, delete)
-│   ├── categories/ (index, delete)
-│   ├── tags/       (index, delete)
-│   ├── media/      (index = آپلود + لیست، edit, delete)
-│   ├── faqs/       (index, create, edit, delete)
-│   ├── messages/   (index, view, delete)
-│   └── settings/   (index)
-├── app/
-│   ├── config/
-│   │   ├── config.example.php      # داخل ریپو — کپی کنید به config.php
-│   │   └── config.php              # فقط روی سرور — هرگز commit نکنید
-│   ├── core/  Database, Router, Controller, Auth, Csrf, Helpers
-│   ├── controllers/ Pages, Services
-│   ├── models/      BaseModel + 10 مدل PDO
-│   └── views/
-│       ├── layouts/{main,header,footer}.php
-│       └── public/{home,services,service-detail,about,contact,...}.php
-└── database/
-    ├── schema.sql   # CREATE TABLE های فاز ۲
-    └── seed.sql     # داده‌های اولیه
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /uploads/private/
+Disallow: /app/
+
+Sitemap: https://your-domain.com/sitemap.xml
 ```
+محتوای اضافی از `site_settings.robots_extra` خوانده می‌شود.
+
+### ۸. سیستم Redirects
+جدول `redirects` با فیلدهای `old_url`, `new_url`, `status_code (301/302/307/308)`, `is_active`, `hits`. مدیریت کامل از طریق:
+- `/admin/redirects/` — لیست
+- `/admin/redirects/edit.php` — افزودن/ویرایش
+- `/admin/redirects/delete.php` — حذف
+
+Router در ابتدای dispatch، اگر آدرس فعلی در `redirects` فعال باشد، با کد مناسب redirect می‌کند و `hits` را افزایش می‌دهد.
 
 ---
 
 ## نصب روی cPanel (گام به گام)
 
 ### ۱) آپلود فایل‌ها
-- محتویات `irannetwork-php/public_html/` را روی `public_html/` هاست cPanel آپلود کنید.
-- مطمئن شوید فایل‌های مخفی (`.htaccess` و `uploads/.htaccess`) منتقل شده‌اند.
-- نسخه‌ی PHP در cPanel: **8.1 یا بالاتر**. اکستنشن‌های `pdo_mysql`, `mbstring`, `fileinfo` فعال باشند.
+محتویات `irannetwork-php/public_html/` را در `public_html/` آپلود کنید.
 
-### ۲) ساخت دیتابیس در cPanel
-1. در cPanel وارد **MySQL Databases** شوید.
-2. یک دیتابیس جدید بسازید (مثلاً `myuser_irannet`).
-3. یک کاربر جدید بسازید و رمز قوی بدهید.
-4. کاربر را با تمام دسترسی‌ها (`ALL PRIVILEGES`) به دیتابیس متصل کنید.
+### ۲) ایجاد دیتابیس
+از cPanel → MySQL Databases:
+- یک database و یک user بسازید
+- user را با ALL PRIVILEGES به database بدهید
 
-### ۳) Import کردن schema و seed
-- وارد **phpMyAdmin** شوید، دیتابیس را انتخاب کنید و:
-  1. ابتدا `database/schema.sql` را Import کنید.
-  2. سپس `database/seed.sql` را Import کنید.
+### ۳) Import کردن دیتابیس
+از cPanel → phpMyAdmin → دیتابیس را انتخاب کرده و Import کنید:
+1. ابتدا `database/schema.sql` (شامل همه‌ی جداول فاز ۱ تا ۳ — یک‌بار)
+2. سپس `database/seed.sql` (داده اولیه)
 
-### ۴) ساخت `config.php`
-- در سرور، `public_html/app/config/config.example.php` را کپی کنید به `config.php`:
-  ```
-  cp app/config/config.example.php app/config/config.php
-  ```
-- مقادیر را با اطلاعات واقعی پر کنید:
-  - `APP_ENV` → `production`
-  - `APP_DEBUG` → `false`
-  - `APP_URL` → دامنه‌ی واقعی (با https://)
-  - `APP_KEY` → رشته‌ی تصادفی ۳۲+ کاراکتری
-  - `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS` → از مرحله ۲
-- فایل `config.php` در `.gitignore` است و **هرگز نباید commit شود**.
+> اگر فاز ۲ را قبلاً Import کرده‌اید و فقط می‌خواهید فاز ۳ را اضافه کنید، فایل `database/seo_redirects.sql` را Import کنید.
 
-### ۵) ساخت اولین کاربر admin
-- مرورگر را باز کنید و به این آدرس بروید:
-  ```
-  https://your-domain.tld/admin/setup.php
-  ```
-- اگر هیچ کاربری در دیتابیس نیست، فرم ساخت admin نمایش داده می‌شود.
-- نام، ایمیل، و رمز قوی (حداقل ۸ کاراکتر) وارد کنید.
-- بعد از ساخت، صفحه به `/admin/login.php` ری‌دایرکت می‌شود.
-- اگر کاربری از قبل وجود داشته باشد، صفحه `setup.php` به‌صورت خودکار غیرفعال می‌شود.
+### ۴) پیکربندی
+`app/config/config.example.php` را به `app/config/config.php` کپی کرده و این مقادیر را پر کنید:
+- `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`
+- `APP_URL` (مثلاً `https://irannetwork.co`)
+- `APP_KEY` (یک رشته تصادفی 32+ کاراکتر)
 
-### ۶) ورود به پنل
-- آدرس ورود:
-  ```
-  https://your-domain.tld/admin/login.php
-  ```
+### ۵) ساخت اولین مدیر
+به `https://your-domain.com/admin/setup.php` بروید (فقط زمانی فعال است که جدول users خالی باشد). اطلاعات اولین حساب مدیر را وارد کنید.
 
-### ۷) مجوزها (Permissions)
-- پوشه `public_html/uploads/media/` باید نوشتنی باشد (`0755` یا `0775`).
-- در cPanel معمولاً به‌صورت پیش‌فرض درست است.
+### ۶) ورود
+`https://your-domain.com/admin/login.php`
+
+### ۷) اطمینان از .htaccess
+mod_rewrite باید فعال باشد (روی cPanel معمولاً هست). در غیر این صورت در مسیرهای SEO-friendly مشکل دارید.
+
+### ۸) بررسی sitemap و robots
+- `https://your-domain.com/sitemap.xml`
+- `https://your-domain.com/robots.txt`
+- در Google Search Console، sitemap را Submit کنید.
 
 ---
 
 ## مسیرهای پنل مدیریت
 
-| مسیر | کاربرد |
+| URL | شرح |
 |---|---|
-| `/admin/setup.php` | ساخت اولین admin (فقط یک‌بار) |
+| `/admin/setup.php` | ساخت اولین admin (یک‌باره) |
 | `/admin/login.php` | ورود |
-| `/admin/logout.php` | خروج |
-| `/admin/dashboard.php` | داشبورد + آمار |
-| `/admin/posts/` | مقاله‌ها (لیست/ساخت/ویرایش/حذف) |
-| `/admin/services/` | سرویس‌ها |
-| `/admin/pages/` | صفحات |
+| `/admin/logout.php` | خروج (POST) |
+| `/admin/dashboard.php` | داشبورد |
+| `/admin/posts/` | مدیریت مقالات (با تب سئو) |
+| `/admin/services/` | مدیریت سرویس‌ها (با تب سئو) |
+| `/admin/pages/` | مدیریت صفحات (با تب سئو) |
 | `/admin/categories/` | دسته‌بندی‌ها |
 | `/admin/tags/` | برچسب‌ها |
-| `/admin/media/` | کتابخانه رسانه + آپلود |
+| `/admin/media/` | کتابخانه رسانه |
 | `/admin/faqs/` | سوالات متداول |
 | `/admin/messages/` | پیام‌های فرم تماس |
+| `/admin/redirects/` | **(جدید)** مدیریت ریدایرکت‌ها |
 | `/admin/settings/` | تنظیمات سایت |
 
-تمامی مسیرهای بالا (به‌جز `setup`, `login`, `logout`) با `Auth::requireAdmin()` محافظت می‌شوند.
-
 ---
 
-## جدول‌های دیتابیس
+## ساختار پوشه‌ها
 
-`users`, `categories`, `tags`, `services`, `pages`, `posts`, `post_tags`, `post_services`, `media`, `faqs`, `contact_messages`, `site_settings`
-
-تمام جدول‌ها با charset `utf8mb4` و collation `utf8mb4_unicode_ci` ساخته می‌شوند تا برای فارسی کاملاً ایمن باشند. Foreign keyهای حیاتی (post → user/category، post_tags، post_services، faq → ...) با `ON DELETE SET NULL` یا `CASCADE` تعریف شده‌اند.
-
----
-
-## رسانه‌ها و آپلود
-
-- **محل ذخیره فیزیکی**: `public_html/uploads/media/`
-- **آدرس عمومی**: `/uploads/media/<filename>`
-- **محدودیت پیش‌فرض**: ۵ مگابایت (در `config.php` متغیر `MAX_UPLOAD_SIZE`)
-- **پسوندهای مجاز**: `jpg, jpeg, png, webp, svg`
-- **mime type واقعی** با `finfo` بررسی می‌شود.
-- **نام فایل** sanitize و با ۸ کاراکتر تصادفی پسوند‌گذاری می‌شود تا path traversal و overwrite اتفاق نیفتد.
-- **اجرای PHP در پوشه uploads مسدود** است (`uploads/.htaccess`).
-- در پنل مدیریت دکمه‌ی **کپی URL** برای استفاده در فیلدهای featured image وجود دارد.
-
----
-
-## بکاپ‌گیری
-
-### دیتابیس
-از **phpMyAdmin** → تب **Export** → فرمت SQL → Custom → فعال‌سازی `Add DROP TABLE / IF NOT EXISTS` → دانلود.
-
-برای CLI/SSH:
-```bash
-mysqldump -u USER -p DBNAME > backup_$(date +%F).sql
+```
+irannetwork-php/
+├── database/
+│   ├── schema.sql           ← همه جداول (فاز ۱–۳)
+│   ├── seed.sql             ← داده اولیه
+│   └── seo_redirects.sql    ← فقط جداول فاز ۳ (برای migration جداگانه)
+└── public_html/
+    ├── index.php            ← front controller (Router داینامیک)
+    ├── .htaccess            ← rewrite + کش + هدر امنیتی
+    ├── robots.txt           ← static fallback (داینامیک نیز فعال است)
+    ├── app/
+    │   ├── config/
+    │   ├── controllers/     ← PagesController, ServicesController, BlogController, SeoController
+    │   ├── core/            ← Router, Database, Auth, Csrf, Helpers, Controller, Seo
+    │   ├── models/          ← +SeoMeta, +Redirect
+    │   └── views/
+    │       ├── layouts/
+    │       └── public/      ← +blog-index, +blog-show, +blog-list, +services-index, +service-show, +page-show
+    ├── admin/
+    │   ├── _bootstrap.php, _layout.php
+    │   ├── _seo_partial.php ← تب سئو در فرم‌های ادمین
+    │   ├── _seo_save.php    ← ذخیره‌ی seo_meta از POST
+    │   ├── posts/, services/, pages/, categories/, tags/, media/, faqs/, messages/, settings/
+    │   └── redirects/       ← (جدید)
+    ├── assets/css/main.css, admin.css
+    ├── assets/js/main.js, admin.js
+    └── uploads/media/       ← آپلودها (PHP execution مسدود)
 ```
 
-### فایل‌ها
-از cPanel File Manager، پوشه `public_html/uploads/` و `public_html/app/config/config.php` را فشرده کنید و دانلود نمایید.
-
 ---
 
-## آماده برای فاز ۳
+## جدول‌های دیتابیس (مجموع ۱۴)
 
-- جدول‌ها و مدل‌های CMS کامل ساخته شده‌اند و آماده‌ی نمایش عمومی هستند.
-- `SiteSetting` و `site_setting()` helper برای استفاده در همه viewها فعال است.
-- `site_services()` از دیتابیس می‌خواند (در صورت موجود بودن).
-- ساختار controller/router به‌راحتی قابلیت اضافه شدن مسیر داینامیک `/services/{slug}`, `/blog/{slug}`, `/blog/category/{slug}` را دارد.
+users, categories, tags, services, pages, posts, post_tags, post_services, media, faqs, contact_messages, site_settings, **seo_meta** (جدید فاز ۳), **redirects** (جدید فاز ۳).
 
----
-
-## آنچه هنوز ساخته نشده
-
-موارد زیر طبق درخواست برای **فاز ۳** کنار گذاشته شده‌اند:
-
-- ❌ `sitemap.xml` داینامیک
-- ❌ `robots.txt` پیشرفته
-- ❌ سیستم redirects
-- ❌ SEO plugin کامل (شبیه Yoast/RankMath)
-- ❌ schema.org کامل برای هر صفحه
-- ❌ صفحات عمومی داینامیک کامل (`/blog/{slug}`, `/services/{slug}` از DB)
-- ❌ صفحات public دسته/برچسب
-- ❌ جستجوی عمومی سایت
-- ❌ محدودیت login attempts (rate limit)
-- ❌ ارسال نوتیفیکیشن ایمیل هنگام دریافت فرم تماس
+همه: `InnoDB` + `utf8mb4_unicode_ci`.
 
 ---
 
 ## محدودیت محیط Lovable
 
-- Lovable نمی‌تواند PHP/MySQL را اجرا کند، بنابراین:
-  - این مخزن صرفاً **سورس‌کد** است.
-  - برای دیدن نتیجه باید روی **cPanel** یا یک محیط لوکال PHP (XAMPP/Laragon/MAMP) آپلود/اجرا کنید.
-  - تست بصری ادمین، اجرای schema/seed، آپلود فایل و فرم تماس فقط در محیط واقعی قابل بررسی هستند.
-- بنده schema و کد را با دقت ساخته‌ام اما هیچ‌گونه «اجرای واقعی PHP» یا «import واقعی MySQL» داخل Lovable انجام نشده است.
+Lovable نمی‌تواند PHP/MySQL اجرا کند. preview زنده **در دسترس نیست**. برای تست:
+- روی cPanel آپلود کنید، یا
+- پوشه‌ی `public_html/` را در XAMPP/Laragon قرار دهید و دیتابیس را در phpMyAdmin لوکال Import کنید.
+
+QA بصری و تست فانکشنال نهایی **خارج از Lovable** انجام می‌شود.
+
+---
+
+## آماده برای فاز ۴
+
+- نقش‌های کاربری پیشرفته (editor/author)
+- کش صفحات و object cache
+- چندزبانه (en/fa)
+- سیستم نظرات
+- جستجوی کامل (Full-text)
+- آنالیتیکس داخلی
+- بکاپ خودکار
+
+---
+
+## آنچه هنوز ساخته نشده (در فاز ۳ خارج از scope)
+
+- preview زنده محتوا قبل از انتشار
+- ویرایشگر بلوک‌محور پیشرفته
+- تصاویر چندسایزه (responsive images)
+- جستجو با Full-text
+- چندزبانه (i18n)
+- صفحه `/search`

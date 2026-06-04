@@ -3,241 +3,71 @@ declare(strict_types=1);
 
 class ServicesController extends Controller
 {
-    public function index(): void
+    public function index(array $params = []): void
     {
-        $this->view('public/services', [
-            'pageTitle'       => 'خدمات ایران نتورک | شبکه، سرور، امنیت و ویپ',
-            'pageDescription' => 'فهرست کامل خدمات تخصصی ایران نتورک: پشتیبانی شبکه، نصب و راه‌اندازی، امنیت، ویپ، سرور و دیجیتال مارکتینگ.',
-            'canonical'       => '/services',
-            'services'        => site_services(),
+        $services = Database::fetchAll(
+            "SELECT id, title, slug, excerpt, featured_image, featured_image_alt
+             FROM services WHERE status='published' ORDER BY sort_order ASC, id ASC"
+        );
+
+        $meta = (new SeoMeta())->findFor('page', 0); // global default
+        $seo = Seo::build(['title'=>'خدمات ایران نتورک','content'=>''], null, [
+            'title'      => 'خدمات ایران نتورک | شبکه، سرور، امنیت و ویپ',
+            'description'=> 'فهرست کامل خدمات تخصصی ایران نتورک: پشتیبانی شبکه، نصب و راه‌اندازی، امنیت، ویپ، سرور و دیجیتال مارکتینگ.',
+            'canonical'  => site_url('/services'),
+        ]);
+
+        $this->view('public/services-index', [
+            'seo'=>$seo,'pageTitle'=>'خدمات ایران نتورک','services'=>$services,
+            'schemas'=>[Seo::breadcrumbs([
+                ['name'=>'خانه','url'=>site_url('/')],
+                ['name'=>'خدمات','url'=>site_url('/services')],
+            ])],
         ]);
     }
 
-    public function networkSupport(): void       { $this->renderService('network-support'); }
-    public function networkInstallation(): void  { $this->renderService('network-installation'); }
-    public function voip(): void                 { $this->renderService('voip'); }
-    public function digitalMarketing(): void     { $this->renderService('digital-marketing'); }
-    public function networkSecurity(): void      { $this->renderService('network-security'); }
-    public function serverSupport(): void        { $this->renderService('server-support'); }
-    public function activeNetwork(): void        { $this->renderService('active-network'); }
-    public function passiveNetwork(): void       { $this->renderService('passive-network'); }
-
-    private function renderService(string $slug): void
+    public function show(array $params): void
     {
-        $data = $this->serviceData($slug);
-        if ($data === null) {
-            (new PagesController())->notFound();
-            return;
+        $slug = (string)($params['slug'] ?? '');
+        $service = (new Service())->findBySlug($slug);
+        if (!$service || $service['status'] !== 'published') {
+            (new PagesController())->notFound(); return;
         }
+        $faqs = Database::fetchAll('SELECT question, answer FROM faqs WHERE service_id = ? AND is_active=1 ORDER BY sort_order ASC', [(int)$service['id']]);
+        $relatedPosts = Database::fetchAll(
+            "SELECT p.id, p.title, p.slug, p.excerpt FROM posts p
+             JOIN post_services ps ON ps.post_id=p.id
+             WHERE ps.service_id=? AND p.status='published'
+             ORDER BY p.published_at DESC LIMIT 4",
+            [(int)$service['id']]
+        );
+        $otherServices = Database::fetchAll(
+            "SELECT id, title, slug FROM services WHERE status='published' AND id<>? ORDER BY sort_order ASC LIMIT 6",
+            [(int)$service['id']]
+        );
 
-        $this->view('public/service-detail', [
-            'pageTitle'       => $data['title'] . ' | ایران نتورک',
-            'pageDescription' => $data['meta_description'],
-            'canonical'       => '/services/' . $slug,
-            'service'         => $data,
+        $meta = (new SeoMeta())->findFor('service', (int)$service['id']);
+        $seo = Seo::build($service, $meta, [
+            'title'      => ($service['title'] ?? '') . ' | ایران نتورک',
+            'description'=> $service['excerpt'] ?? excerpt($service['content'] ?? '', 30),
+            'canonical'  => site_url('/services/' . $service['slug']),
+            'image'      => $service['featured_image'] ?? null,
         ]);
-    }
 
-    /**
-     * Service content. Phase 3 will move this to the database.
-     */
-    private function serviceData(string $slug): ?array
-    {
-        $services = [
-            'network-support' => [
-                'slug' => 'network-support',
-                'title' => 'پشتیبانی شبکه',
-                'h1' => 'خدمات پشتیبانی شبکه سازمانی',
-                'meta_description' => 'پشتیبانی پیوسته و حرفه‌ای شبکه شرکت‌ها و سازمان‌ها توسط تیم متخصص ایران نتورک، با SLA مشخص و پاسخ‌گویی سریع.',
-                'intro' => 'پشتیبانی شبکه ایران نتورک با هدف پایداری، امنیت و سرعت زیرساخت IT کسب‌وکار شما طراحی شده است. تیم ما با تجربه‌ی چندین ساله، نگهداری دوره‌ای، رفع خطا و ارتقاء شبکه را در قالب قراردادهای ماهانه و سالانه ارائه می‌دهد.',
-                'benefits' => [
-                    'پاسخ‌گویی سریع به مشکلات شبکه',
-                    'مانیتورینگ مداوم تجهیزات اکتیو و پسیو',
-                    'بازدید دوره‌ای و گزارش وضعیت',
-                    'پشتیبانی حضوری و ریموت',
-                    'SLA شفاف و قابل اندازه‌گیری',
-                ],
-                'steps' => [
-                    ['title' => 'بررسی وضعیت', 'desc' => 'ارزیابی زیرساخت فعلی، تجهیزات و نقاط ضعف.'],
-                    ['title' => 'طرح پشتیبانی', 'desc' => 'ارائه قرارداد متناسب با مقیاس و نیاز سازمان.'],
-                    ['title' => 'اجرای پشتیبانی', 'desc' => 'پاسخ‌گویی، رفع خطا و بازدید دوره‌ای.'],
-                    ['title' => 'گزارش‌دهی', 'desc' => 'ارائه گزارش ماهانه عملکرد و پیشنهاد بهبود.'],
-                ],
-                'faq' => [
-                    ['q' => 'قراردادهای پشتیبانی به چه شکل بسته می‌شوند؟', 'a' => 'قراردادها به صورت ماهانه یا سالانه، با تعداد بازدید و SLA مشخص، متناسب با نیاز شما تنظیم می‌شوند.'],
-                    ['q' => 'آیا پشتیبانی شامل تجهیزات هم می‌شود؟', 'a' => 'بله، در صورت توافق، نگهداری و کنترل تجهیزات اکتیو و پسیو نیز در قرارداد لحاظ می‌شود.'],
-                ],
-            ],
-            'network-installation' => [
-                'slug' => 'network-installation',
-                'title' => 'نصب و راه‌اندازی شبکه',
-                'h1' => 'نصب و راه‌اندازی شبکه سازمانی',
-                'meta_description' => 'طراحی، اجرا و راه‌اندازی شبکه‌های سیمی و بی‌سیم سازمانی توسط کارشناسان ایران نتورک، مطابق با استانداردهای روز.',
-                'intro' => 'از طراحی نقشه شبکه تا اجرای فیزیکی، کابل‌کشی، نصب تجهیزات اکتیو و پیکربندی نهایی — همه را با کیفیت و استاندارد در ایران نتورک انجام می‌دهیم.',
-                'benefits' => [
-                    'طراحی منطبق با نیاز کسب‌وکار',
-                    'اجرای استاندارد و قابل توسعه',
-                    'استفاده از تجهیزات معتبر',
-                    'مستندسازی کامل پروژه',
-                    'تحویل قابل پشتیبانی',
-                ],
-                'steps' => [
-                    ['title' => 'بازدید فنی', 'desc' => 'بررسی محیط و نیازهای ارتباطی سازمان.'],
-                    ['title' => 'طراحی نقشه', 'desc' => 'تهیه طرح شبکه و انتخاب تجهیزات مناسب.'],
-                    ['title' => 'اجرا', 'desc' => 'کابل‌کشی، نصب رک، تجهیزات اکتیو و پیکربندی.'],
-                    ['title' => 'تست و تحویل', 'desc' => 'تست کیفیت، مستندسازی و تحویل پروژه.'],
-                ],
-                'faq' => [
-                    ['q' => 'مدت زمان اجرای یک پروژه چقدر است؟', 'a' => 'بسته به ابعاد و پیچیدگی پروژه، معمولاً بین چند روز تا چند هفته متغیر است.'],
-                    ['q' => 'آیا تجهیزات هم تأمین می‌کنید؟', 'a' => 'بله، در صورت درخواست، تأمین تجهیزات از برندهای معتبر را نیز انجام می‌دهیم.'],
-                ],
-            ],
-            'voip' => [
-                'slug' => 'voip',
-                'title' => 'خدمات ویپ و سانترال',
-                'h1' => 'راه‌اندازی ویپ و سانترال تحت شبکه',
-                'meta_description' => 'پیاده‌سازی سیستم‌های تلفنی VoIP، سانترال و IPPBX برای سازمان‌ها و شرکت‌ها توسط تیم تخصصی ایران نتورک.',
-                'intro' => 'سیستم‌های ویپ امکان کاهش هزینه مکالمات، یکپارچگی ارتباطات و افزایش بهره‌وری را فراهم می‌کنند. ایران نتورک از مشاوره تا اجرا و پشتیبانی در کنار شماست.',
-                'benefits' => [
-                    'کاهش هزینه مکالمات',
-                    'یکپارچگی شعب و دفاتر',
-                    'پشتیبانی از IVR و صف انتظار',
-                    'گزارش‌گیری حرفه‌ای مکالمات',
-                    'قابلیت توسعه با رشد سازمان',
-                ],
-                'steps' => [
-                    ['title' => 'مشاوره و نیازسنجی', 'desc' => 'بررسی ابعاد سازمان و نیاز ارتباطی.'],
-                    ['title' => 'طراحی راهکار', 'desc' => 'انتخاب IPPBX و سخت‌افزار مناسب.'],
-                    ['title' => 'پیاده‌سازی', 'desc' => 'نصب، پیکربندی و اتصال خطوط.'],
-                    ['title' => 'پشتیبانی', 'desc' => 'پایش و بهبود مداوم سرویس.'],
-                ],
-                'faq' => [
-                    ['q' => 'آیا با شماره‌های فعلی ما سازگار است؟', 'a' => 'بله، خطوط شهری، E1 و SIP-Trunk قابل اتصال به سیستم ویپ هستند.'],
-                    ['q' => 'برای دفاتر چند شهر هم کاربرد دارد؟', 'a' => 'بله، یکپارچه‌سازی چند دفتر و شعبه یکی از مزایای اصلی ویپ است.'],
-                ],
-            ],
-            'digital-marketing' => [
-                'slug' => 'digital-marketing',
-                'title' => 'دیجیتال مارکتینگ',
-                'h1' => 'خدمات دیجیتال مارکتینگ و سئو',
-                'meta_description' => 'خدمات دیجیتال مارکتینگ ایران نتورک شامل سئو، تبلیغات، طراحی سایت و مدیریت شبکه‌های اجتماعی برای رشد کسب‌وکار.',
-                'intro' => 'حضور حرفه‌ای آنلاین، نتیجه‌ی استراتژی درست است. تیم دیجیتال مارکتینگ ایران نتورک با تمرکز بر داده و عملکرد، رشد قابل اندازه‌گیری برای کسب‌وکار شما می‌سازد.',
-                'benefits' => [
-                    'افزایش رتبه در گوگل',
-                    'رشد ترافیک هدفمند',
-                    'تبلیغات اثربخش و کم‌هزینه',
-                    'محتوای حرفه‌ای و کاربردی',
-                    'گزارش‌های شفاف عملکرد',
-                ],
-                'steps' => [
-                    ['title' => 'تحلیل وضع موجود', 'desc' => 'بررسی سایت، رقبا و کلمات کلیدی.'],
-                    ['title' => 'تدوین استراتژی', 'desc' => 'تعیین کانال‌ها، اهداف و KPIها.'],
-                    ['title' => 'اجرا', 'desc' => 'سئو، تبلیغات و تولید محتوا.'],
-                    ['title' => 'بهینه‌سازی', 'desc' => 'پایش، گزارش و بهبود مستمر.'],
-                ],
-                'faq' => [
-                    ['q' => 'پروژه سئو چقدر زمان می‌برد؟', 'a' => 'نتایج پایدار سئو معمولاً بین ۳ تا ۶ ماه قابل مشاهده هستند.'],
-                    ['q' => 'تعهد به نتایج دارید؟', 'a' => 'بله، KPIهای مشخص در ابتدای همکاری تعریف می‌شوند و گزارش ماهانه ارائه می‌گردد.'],
-                ],
-            ],
-            'network-security' => [
-                'slug' => 'network-security',
-                'title' => 'امنیت شبکه و سرور',
-                'h1' => 'خدمات امنیت شبکه و سرور',
-                'meta_description' => 'تأمین امنیت زیرساخت شبکه و سرور با راهکارهای فایروال، VPN، آنتی‌ویروس سازمانی و سخت‌سازی توسط ایران نتورک.',
-                'intro' => 'امنیت زیرساخت، یعنی امنیت کسب‌وکار. ما با ارزیابی، پیاده‌سازی و پایش مستمر، شبکه و سرور شما را در برابر تهدیدها مقاوم می‌کنیم.',
-                'benefits' => [
-                    'فایروال سازمانی و UTM',
-                    'پیاده‌سازی VPN امن',
-                    'سخت‌سازی سرور و شبکه',
-                    'آنتی‌ویروس سازمانی',
-                    'مانیتورینگ و گزارش‌گیری امنیتی',
-                ],
-                'steps' => [
-                    ['title' => 'ارزیابی امنیتی', 'desc' => 'کشف نقاط ضعف فعلی شبکه و سرور.'],
-                    ['title' => 'طراحی راهکار', 'desc' => 'انتخاب ابزار، سیاست و معماری امن.'],
-                    ['title' => 'پیاده‌سازی', 'desc' => 'اعمال تنظیمات و نصب تجهیزات.'],
-                    ['title' => 'پایش مستمر', 'desc' => 'مانیتورینگ و پاسخ به رخدادها.'],
-                ],
-                'faq' => [
-                    ['q' => 'چه فایروالی پیشنهاد می‌دهید؟', 'a' => 'بر اساس ابعاد سازمان، از Mikrotik، Fortinet، Sophos و … استفاده می‌کنیم.'],
-                    ['q' => 'آیا ارزیابی نفوذ هم انجام می‌دهید؟', 'a' => 'بله، تست نفوذ و ارزیابی امنیتی بخشی از خدمات قابل ارائه است.'],
-                ],
-            ],
-            'server-support' => [
-                'slug' => 'server-support',
-                'title' => 'پشتیبانی سرور',
-                'h1' => 'پشتیبانی و نگهداری سرور سازمانی',
-                'meta_description' => 'نگهداری، مانیتورینگ و پشتیبانی حرفه‌ای سرورهای فیزیکی و مجازی توسط کارشناسان ایران نتورک.',
-                'intro' => 'سرور قلب IT سازمان است. ایران نتورک با پایش پیوسته، پشتیبان‌گیری، به‌روزرسانی و رفع مشکلات، پایداری سرورهای شما را تضمین می‌کند.',
-                'benefits' => [
-                    'مانیتورینگ ۲۴/۷',
-                    'پشتیبان‌گیری منظم',
-                    'به‌روزرسانی امن سیستم‌عامل',
-                    'بهینه‌سازی عملکرد',
-                    'پشتیبانی ریموت و حضوری',
-                ],
-                'steps' => [
-                    ['title' => 'بررسی سرور', 'desc' => 'ارزیابی سرورهای فیزیکی و مجازی موجود.'],
-                    ['title' => 'تنظیم مانیتورینگ', 'desc' => 'راه‌اندازی ابزار پایش و هشدار.'],
-                    ['title' => 'پشتیبانی فعال', 'desc' => 'پاسخ‌گویی و رفع رخدادها.'],
-                    ['title' => 'گزارش دوره‌ای', 'desc' => 'گزارش وضعیت و پیشنهاد ارتقاء.'],
-                ],
-                'faq' => [
-                    ['q' => 'چه نوع سرورهایی پشتیبانی می‌شوند؟', 'a' => 'سرورهای Linux و Windows، فیزیکی و مجازی، اعم از سازمانی و کلود.'],
-                    ['q' => 'سرور ابری هم پشتیبانی می‌کنید؟', 'a' => 'بله، سرورهای ابری داخلی و خارجی نیز تحت پشتیبانی قرار می‌گیرند.'],
-                ],
-            ],
-            'active-network' => [
-                'slug' => 'active-network',
-                'title' => 'خدمات اکتیو شبکه',
-                'h1' => 'خدمات تجهیزات اکتیو شبکه',
-                'meta_description' => 'نصب، پیکربندی و پشتیبانی تجهیزات اکتیو مانند سوئیچ، روتر، اکسس‌پوینت و فایروال توسط ایران نتورک.',
-                'intro' => 'تجهیزات اکتیو، مغز شبکه‌ی شما هستند. ما در پیاده‌سازی و بهینه‌سازی این تجهیزات از برندهای معتبر مانند Cisco، Mikrotik، HPE و Aruba تخصص داریم.',
-                'benefits' => [
-                    'انتخاب تجهیزات مناسب',
-                    'پیکربندی حرفه‌ای',
-                    'بهینه‌سازی عملکرد شبکه',
-                    'پشتیبانی پس از نصب',
-                    'مستندسازی پیکربندی',
-                ],
-                'steps' => [
-                    ['title' => 'نیازسنجی', 'desc' => 'تعیین نیاز و ظرفیت شبکه.'],
-                    ['title' => 'انتخاب تجهیز', 'desc' => 'پیشنهاد برند و مدل مناسب.'],
-                    ['title' => 'نصب و پیکربندی', 'desc' => 'اجرای حرفه‌ای و تست عملکرد.'],
-                    ['title' => 'پشتیبانی', 'desc' => 'پشتیبانی پس از تحویل.'],
-                ],
-                'faq' => [
-                    ['q' => 'با چه برندهایی کار می‌کنید؟', 'a' => 'Cisco، Mikrotik، HPE، Aruba، Juniper و سایر برندهای معتبر.'],
-                    ['q' => 'پشتیبانی پس از نصب چقدر است؟', 'a' => 'بسته به نوع قرارداد، از چند ماه تا پشتیبانی سالانه قابل تعریف است.'],
-                ],
-            ],
-            'passive-network' => [
-                'slug' => 'passive-network',
-                'title' => 'خدمات پسیو شبکه',
-                'h1' => 'خدمات پسیو شبکه و کابل‌کشی',
-                'meta_description' => 'اجرای کابل‌کشی شبکه، فیبر نوری، نصب رک و زیرساخت پسیو سازمانی مطابق استانداردهای بین‌المللی توسط ایران نتورک.',
-                'intro' => 'پایداری شبکه شما با کیفیت اجرای پسیو آغاز می‌شود. ما اجرای کابل‌کشی مس و فیبر، نصب رک و سازمان‌دهی استاندارد را ارائه می‌کنیم.',
-                'benefits' => [
-                    'کابل‌کشی استاندارد Cat6/Cat6a',
-                    'اجرای فیبر نوری',
-                    'نصب و مونتاژ رک',
-                    'سازمان‌دهی تمیز و قابل توسعه',
-                    'تست و مستندسازی نهایی',
-                ],
-                'steps' => [
-                    ['title' => 'بازدید فنی', 'desc' => 'بررسی مسیرها و الزامات اجرا.'],
-                    ['title' => 'طراحی', 'desc' => 'تهیه نقشه و BOQ پروژه.'],
-                    ['title' => 'اجرا', 'desc' => 'کابل‌کشی، رک‌بندی و پچ‌پنل.'],
-                    ['title' => 'تست و تحویل', 'desc' => 'تست کابل‌ها و گزارش نهایی.'],
-                ],
-                'faq' => [
-                    ['q' => 'چه استانداردی رعایت می‌کنید؟', 'a' => 'اجرای پروژه‌ها مطابق با استاندارد TIA/EIA-568 و BICSI انجام می‌شود.'],
-                    ['q' => 'گارانتی اجرا دارید؟', 'a' => 'بله، اجرای پسیو ایران نتورک دارای گارانتی کتبی است.'],
-                ],
-            ],
+        $schemas = [
+            Seo::service($service),
+            Seo::breadcrumbs([
+                ['name'=>'خانه','url'=>site_url('/')],
+                ['name'=>'خدمات','url'=>site_url('/services')],
+                ['name'=>$service['title'],'url'=>site_url('/services/' . $service['slug'])],
+            ]),
         ];
+        if ($faqs) $schemas[] = Seo::faqPage($faqs);
 
-        return $services[$slug] ?? null;
+        $this->view('public/service-show', [
+            'seo'=>$seo,'pageTitle'=>$service['title'],'service'=>$service,
+            'faqs'=>$faqs,'relatedPosts'=>$relatedPosts,'otherServices'=>$otherServices,
+            'schemas'=>$schemas,
+        ]);
     }
 }
