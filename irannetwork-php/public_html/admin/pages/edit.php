@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     $data['slug']=unique_slug(slugify($data['slug']),'pages',$isEdit?$id:null);
     if(!$errors){
         if($isEdit) $m->update($id,$data); else $id=$m->create($data);
-        require_once __DIR__.'/../_seo_partial.php';
+        require_once __DIR__.'/../_seo_save.php';
         seo_save_from_post('page', (int)$id);
         flash('success', $isEdit?'صفحه به‌روزرسانی شد.':'صفحه ساخته شد.');
         redirect('/admin/pages/edit.php?id='.$id);
