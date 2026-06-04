@@ -171,7 +171,7 @@ class SeoAnalyzer
         $html  = (string)($entity['content'] ?? '');
         $text  = trim(strip_tags($html));
         $h1    = (string)($entity['h1'] ?? $entity['title'] ?? '');
-        $words = $text === '' ? [] : preg_split('/\s+/u', $text) ?: [];
+        $words = $text === '' ? [] : (preg_split('/\s+/u', $text) ?: []);
         $wc    = count($words);
 
         $score = 0; $maxScore = 0; $tips = [];
