@@ -8,8 +8,9 @@ $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
     Csrf::check();
     $file = $_FILES['file'];
-    $allowedExt  = ['jpg','jpeg','png','webp','svg'];
-    $allowedMime = ['image/jpeg','image/png','image/webp','image/svg+xml'];
+    // SVG intentionally NOT allowed — can carry inline <script>/XSS.
+    $allowedExt  = ['jpg','jpeg','png','webp','gif'];
+    $allowedMime = ['image/jpeg','image/png','image/webp','image/gif'];
     $maxSize = defined('MAX_UPLOAD_SIZE') ? MAX_UPLOAD_SIZE : 5 * 1024 * 1024;
 
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
@@ -68,8 +69,8 @@ ob_start(); ?>
   <h2><?= icon_svg('plus',16) ?> آپلود فایل جدید</h2>
   <?php foreach($errors as $err):?><div class="flash flash-error"><?= e($err) ?></div><?php endforeach; ?>
   <div class="form-grid">
-    <div class="form-group full"><label>فایل (jpg, png, webp, svg — حداکثر <?= round((defined('MAX_UPLOAD_SIZE')?MAX_UPLOAD_SIZE:5242880)/1024/1024,1) ?> MB)</label>
-      <input type="file" name="file" accept=".jpg,.jpeg,.png,.webp,.svg" required></div>
+    <div class="form-group full"><label>فایل (jpg, png, webp, gif — حداکثر <?= round((defined('MAX_UPLOAD_SIZE')?MAX_UPLOAD_SIZE:5242880)/1024/1024,1) ?> MB)</label>
+      <input type="file" name="file" accept=".jpg,.jpeg,.png,.webp,.gif" required></div>
     <div class="form-group"><label>عنوان (اختیاری)</label><input name="title" maxlength="255"></div>
     <div class="form-group"><label>متن جایگزین (alt)</label><input name="alt" maxlength="255"></div>
     <div class="form-group full"><label>توضیح (caption)</label><textarea name="caption" rows="2"></textarea></div>

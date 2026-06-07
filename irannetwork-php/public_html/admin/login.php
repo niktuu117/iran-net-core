@@ -20,16 +20,25 @@ $error = '';
 $email = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     Csrf::check();
-    $email = trim((string)($_POST['email'] ?? ''));
-    $pwd   = (string)($_POST['password'] ?? '');
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $pwd === '') {
-        $error = 'ایمیل یا رمز نامعتبر است.';
+    // Throttle: max 5 attempts / 15 minutes per IP
+    $wait = Throttle::check('login', 5, 900);
+    if ($wait > 0) {
+        $error = 'تلاش‌های ناموفق زیاد بوده. لطفاً ' . ceil($wait / 60) . ' دقیقه دیگر امتحان کنید.';
     } else {
-        $user = Auth::attempt($email, $pwd);
-        if ($user && ($user['role'] ?? '') === 'admin') {
-            redirect('/admin/dashboard.php');
+        $email = trim((string)($_POST['email'] ?? ''));
+        $pwd   = (string)($_POST['password'] ?? '');
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $pwd === '') {
+            Throttle::hit('login', 900);
+            $error = 'ایمیل یا رمز نامعتبر است.';
+        } else {
+            $user = Auth::attempt($email, $pwd);
+            if ($user && ($user['role'] ?? '') === 'admin') {
+                Throttle::clear('login');
+                redirect('/admin/dashboard.php');
+            }
+            Throttle::hit('login', 900);
+            $error = 'ایمیل یا رمز عبور اشتباه است.';
         }
-        $error = 'ایمیل یا رمز عبور اشتباه است.';
     }
 }
 
