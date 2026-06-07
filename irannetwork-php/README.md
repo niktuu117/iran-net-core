@@ -10,8 +10,41 @@
 
 - ✅ **فاز ۱** — Foundation، طراحی، صفحات استاتیک
 - ✅ **فاز ۲** — دیتابیس، پنل ادمین، CRUDها، آپلود رسانه، فرم تماس
-- ✅ **فاز ۳** — **محتوای داینامیک + ماژول سئو + sitemap + redirects + Schema.org**
-- ⏳ فاز ۴ (آینده) — کش پیشرفته، نقش‌ها، چندزبانه، آنالیتیکس و …
+- ✅ **فاز ۳** — محتوای داینامیک + ماژول سئو + sitemap + redirects + Schema.org
+- ✅ **فاز ۴** — Production hardening، cache foundation، throttling، docs
+
+> **Release Candidate:** IranNetwork CMS **v1.0 — Production Ready**
+> راهنماهای تخصصی: [DEPLOYMENT.md](./DEPLOYMENT.md) · [BACKUP.md](./BACKUP.md) · [MIGRATION.md](./MIGRATION.md)
+
+---
+
+## فاز ۴ — چه چیزی اضافه شد؟
+
+### امنیت
+- 🔒 **حذف SVG از آپلود** (XSS از طریق `<script>` داخل SVG)
+- 🔒 **Login Throttle**: حداکثر ۵ تلاش ناموفق در ۱۵ دقیقه per-IP
+- 🔒 **Contact Throttle + Honeypot**: ۵ ارسال در ۱۰ دقیقه + فیلد مخفی ضد بات
+- 🔒 **.htaccess hardened**: deny app/, cache/, database/, `config.php`; HSTS-ready؛ Cache-Control جداگانه برای HTML و assets
+- 🔒 **uploads/.htaccess**: SVG با CSP sandbox + Content-Disposition: attachment
+- 🔒 **Reserved slugs**: `is_reserved_slug()` برای جلوگیری از تصادم slug صفحات با مسیرهای سیستمی
+
+### کارایی
+- ⚡ **`Cache` class**: file-based cache (بدون نیاز به Redis) با `remember()`, `flush()`, `flushTag()`
+- ⚡ **`Throttle` class**: rate-limiter فایل-محور per-IP
+- ⚡ **Cache headers**: immutable برای assets، no-cache برای HTML
+- ⚡ **Gzip + Expires** برای تمام انواع متنی و فونت
+
+### تولید (Production)
+- 📚 [DEPLOYMENT.md](./DEPLOYMENT.md) — نصب گام‌به‌گام cPanel + Production Checklist
+- 📚 [BACKUP.md](./BACKUP.md) — بکاپ فایل + دیتابیس + cron نمونه + restore
+- 📚 [MIGRATION.md](./MIGRATION.md) — مهاجرت SEO از وردپرس قدیم با Redirect 301
+- 📦 `.gitignore` کامل (config.php، uploads، cache، logs، .env)
+
+### مسیر داینامیک sitemap.xml و robots.txt
+فایل استاتیک `robots.txt` حذف شد و `.htaccess` این دو مسیر را به روتر می‌سپارد تا نسخه‌ی داینامیک `SeoController` همیشه ارائه شود.
+
+---
+
 
 ---
 

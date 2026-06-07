@@ -1,12 +1,28 @@
-# Real config & secrets — never commit
+# Secrets & config — never commit
 public_html/app/config/config.php
+**/config.php
+*.env
+.env
+.env.*
 
-# Uploaded media — keep folder structure, ignore contents
+# Uploaded media — keep folder, ignore contents
 public_html/uploads/media/*
 !public_html/uploads/media/.gitkeep
+
+# Cache directory — keep folder, ignore contents
+public_html/cache/*
+!public_html/cache/.gitkeep
+!public_html/cache/.htaccess
+
+# Logs / dumps
+*.log
+*.sql.gz
+*.bak
+*.swp
+*.dist
 
 # OS / editor
 .DS_Store
 Thumbs.db
-*.swp
-*.log
+.vscode/
+.idea/

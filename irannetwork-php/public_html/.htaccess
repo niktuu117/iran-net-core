@@ -1,67 +1,89 @@
-# IranNetwork - .htaccess for cPanel
-# Clean URLs + basic security
+# IranNetwork — Production .htaccess (Phase 4)
+# Clean URLs + security headers + cache strategy.
 
 Options -Indexes -MultiViews
 DirectoryIndex index.php
 AddDefaultCharset UTF-8
+ServerSignature Off
 
+# ---------- Rewrite ----------
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
 
-    # Force HTTPS (uncomment in production after SSL is active)
+    # Force HTTPS in production — uncomment after SSL is active.
     # RewriteCond %{HTTPS} off
     # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-    # Force non-www (optional - uncomment if needed)
+    # Force non-www (optional).
     # RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
     # RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
 
-    # Block direct access to app/ and database/ folders
-    RewriteRule ^app/ - [F,L]
-    RewriteRule ^database/ - [F,L]
+    # Block direct access to app/, database/, cache/
+    RewriteRule ^app/        - [F,L]
+    RewriteRule ^database/   - [F,L]
+    RewriteRule ^cache/      - [F,L]
 
-    # Allow real files & directories
+    # Let sitemap.xml / robots.txt be handled by the router (dynamic).
+    RewriteRule ^sitemap\.xml$ index.php?_url=sitemap.xml [L,QSA]
+    RewriteRule ^robots\.txt$  index.php?_url=robots.txt  [L,QSA]
+
+    # Serve real static files / directories untouched.
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # Route everything else through index.php
+    # Front controller
     RewriteRule ^(.*)$ index.php?_url=$1 [QSA,L]
 </IfModule>
 
-# Cache static assets
+# ---------- Compression ----------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css
+    AddOutputFilterByType DEFLATE application/javascript application/json application/xml
+    AddOutputFilterByType DEFLATE image/svg+xml font/ttf font/otf application/font-woff application/font-woff2
+</IfModule>
+
+# ---------- Cache strategy ----------
 <IfModule mod_expires.c>
     ExpiresActive On
-    ExpiresByType text/css "access plus 1 month"
-    ExpiresByType application/javascript "access plus 1 month"
-    ExpiresByType image/png "access plus 1 year"
-    ExpiresByType image/jpeg "access plus 1 year"
-    ExpiresByType image/svg+xml "access plus 1 year"
-    ExpiresByType image/webp "access plus 1 year"
-    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresDefault                          "access plus 1 hour"
+    ExpiresByType text/html                 "access plus 0 seconds"
+    ExpiresByType text/css                  "access plus 1 month"
+    ExpiresByType application/javascript    "access plus 1 month"
+    ExpiresByType image/png                 "access plus 1 year"
+    ExpiresByType image/jpeg                "access plus 1 year"
+    ExpiresByType image/webp                "access plus 1 year"
+    ExpiresByType image/svg+xml             "access plus 1 month"
+    ExpiresByType font/woff2                "access plus 1 year"
 </IfModule>
 
-# Compression
-<IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/css application/javascript text/xml application/xml image/svg+xml
-</IfModule>
-
-# Security headers
 <IfModule mod_headers.c>
-    Header set X-Content-Type-Options "nosniff"
-    Header set X-Frame-Options "SAMEORIGIN"
-    Header set Referrer-Policy "strict-origin-when-cross-origin"
-    Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    # Long-lived, immutable for fingerprintable assets
+    <FilesMatch "\.(css|js|woff2|woff|ttf|otf|png|jpg|jpeg|webp|avif|gif|ico)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    <FilesMatch "\.(html|php)$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+
+    # Security headers
+    Header set X-Content-Type-Options    "nosniff"
+    Header set X-Frame-Options           "SAMEORIGIN"
+    Header set Referrer-Policy           "strict-origin-when-cross-origin"
+    Header set Permissions-Policy        "geolocation=(), microphone=(), camera=(), payment=()"
+    Header set X-XSS-Protection          "0"
+    # HSTS — enable after SSL is verified working
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    # Remove potentially leaky headers
+    Header unset X-Powered-By
+    Header unset Server
 </IfModule>
 
-# Disable server signature
-ServerSignature Off
-
-# Custom 404 (handled inside router too)
-ErrorDocument 404 /404
-
-# Hide sensitive files
-<FilesMatch "^(\.htaccess|\.htpasswd|\.env|composer\.json|composer\.lock|README\.md|.*\.example\..*)$">
+# ---------- Hide sensitive files ----------
+<FilesMatch "(^\.|\.(env|ini|log|sh|sql|bak|swp|dist|example)$|composer\.(json|lock)|README\.md|config\.php)$">
     Require all denied
 </FilesMatch>
+
+# Custom 404 (router also handles it)
+ErrorDocument 404 /404

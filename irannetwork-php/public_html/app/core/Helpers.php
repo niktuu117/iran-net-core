@@ -112,6 +112,22 @@ if (!function_exists('unique_slug')) {
     }
 }
 
+if (!function_exists('reserved_slugs')) {
+    /** Slugs that conflict with system routes / directories. */
+    function reserved_slugs(): array
+    {
+        return ['admin','app','assets','blog','cache','category','contact','database',
+                'sitemap.xml','robots.txt','services','tag','uploads','404'];
+    }
+}
+
+if (!function_exists('is_reserved_slug')) {
+    function is_reserved_slug(string $slug): bool
+    {
+        return in_array(strtolower(trim($slug)), reserved_slugs(), true);
+    }
+}
+
 if (!function_exists('format_date_fa')) {
     function format_date_fa(?string $datetime): string
     {

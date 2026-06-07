@@ -1,5 +1,5 @@
-# Allow image files to be served, but block any script execution.
-<FilesMatch "\.(php|phtml|php3|php4|php5|php7|phps|pl|py|cgi|sh|asp|aspx|exe)$">
+# Block any script execution under /uploads.
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7|php8|phps|pl|py|cgi|sh|asp|aspx|exe|jsp|cfm|htaccess|htpasswd)$">
     Require all denied
 </FilesMatch>
 
@@ -9,6 +9,19 @@
 </FilesMatch>
 
 Options -Indexes -ExecCGI
-RemoveHandler .php .phtml .php3 .php4 .php5 .php7
-RemoveType    .php .phtml .php3 .php4 .php5 .php7
-AddType text/plain .php .phtml .php3 .php4 .php5 .php7 .pl .py .cgi
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8
+RemoveType    .php .phtml .php3 .php4 .php5 .php7 .php8
+AddType text/plain .php .phtml .php3 .php4 .php5 .php7 .php8 .pl .py .cgi
+
+# Force inline images; SVG is forced to download (mitigates stored-XSS via SVG).
+<IfModule mod_headers.c>
+    <FilesMatch "\.svg$">
+        Header set Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+        Header set X-Content-Type-Options "nosniff"
+        Header set Content-Disposition "attachment"
+    </FilesMatch>
+    <FilesMatch "\.(jpg|jpeg|png|gif|webp|avif)$">
+        Header set X-Content-Type-Options "nosniff"
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+</IfModule>
