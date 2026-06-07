@@ -25,6 +25,11 @@ define('UPLOAD_DIR',      __DIR__ . '/../../uploads/media');     // filesystem p
 define('UPLOAD_URL',      '/uploads/media');                     // public URL prefix
 define('MAX_UPLOAD_SIZE', 5 * 1024 * 1024);                      // 5 MB
 
+// --- Cache (Phase 4) ---
+define('CACHE_DIR',       __DIR__ . '/../../cache');             // file cache + throttle
+define('CACHE_ENABLED',   true);                                 // master switch
+define('CACHE_TTL',       600);                                  // default seconds
+
 // --- Session / CSRF ---
 define('SESSION_NAME',    'IRNETSESS');
 define('CSRF_TOKEN_NAME', '_csrf');
