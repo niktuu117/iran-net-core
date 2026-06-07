@@ -1,8 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /admin/
-Disallow: /app/
-Disallow: /uploads/
-
-# Sitemap will be added dynamically in Phase 3
-# Sitemap: https://irannetwork.co/sitemap.xml
