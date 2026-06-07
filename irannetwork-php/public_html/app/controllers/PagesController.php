@@ -74,17 +74,27 @@ class PagesController extends Controller
             flash('contact_error', 'توکن امنیتی نامعتبر است. لطفاً صفحه را تازه کنید.');
             redirect('/contact');
         }
+        // Rate limit: 5 submissions / 10 minutes per IP
+        $wait = Throttle::check('contact', 5, 600);
+        if ($wait > 0) {
+            flash('contact_error', 'تعداد ارسال‌ها زیاد بوده. لطفاً چند دقیقه دیگر تلاش کنید.');
+            redirect('/contact');
+        }
+        Throttle::hit('contact', 600);
+
         $name    = trim((string)($_POST['name'] ?? ''));
         $phone   = trim((string)($_POST['phone'] ?? ''));
         $email   = trim((string)($_POST['email'] ?? ''));
         $service = trim((string)($_POST['service'] ?? ''));
         $message = trim((string)($_POST['message'] ?? ''));
+        // Honeypot — bots fill hidden fields
+        if (!empty($_POST['website'] ?? '')) { redirect('/contact'); }
 
         $errors = [];
-        if (mb_strlen($name) < 2)   $errors[] = 'نام را به‌درستی وارد کنید.';
+        if (mb_strlen($name) < 2 || mb_strlen($name) > 150)   $errors[] = 'نام را به‌درستی وارد کنید.';
         if (!preg_match('/^[0-9+\-\s]{7,20}$/', $phone)) $errors[] = 'شماره تماس معتبر نیست.';
-        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'ایمیل معتبر نیست.';
-        if (mb_strlen($message) < 10) $errors[] = 'متن پیام باید حداقل ۱۰ کاراکتر باشد.';
+        if ($email !== '' && (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 190)) $errors[] = 'ایمیل معتبر نیست.';
+        if (mb_strlen($message) < 10 || mb_strlen($message) > 5000) $errors[] = 'متن پیام باید بین ۱۰ تا ۵۰۰۰ کاراکتر باشد.';
 
         if ($errors) {
             keep_old(compact('name','phone','email','service','message'));
