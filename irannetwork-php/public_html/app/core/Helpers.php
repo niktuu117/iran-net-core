@@ -275,6 +275,70 @@ if (!function_exists('site_services')) {
     }
 }
 
+if (!function_exists('social_links')) {
+    /**
+     * Returns active social links, keyed by platform.
+     * Each entry: ['url','label','icon'].
+     */
+    function social_links(): array
+    {
+        $defs = [
+            'instagram' => ['label'=>'اینستاگرام', 'icon'=>'instagram'],
+            'telegram'  => ['label'=>'تلگرام',     'icon'=>'telegram'],
+            'whatsapp'  => ['label'=>'واتساپ',     'icon'=>'whatsapp'],
+            'linkedin'  => ['label'=>'لینکدین',    'icon'=>'linkedin'],
+            'aparat'    => ['label'=>'آپارات',     'icon'=>'aparat'],
+            'youtube'   => ['label'=>'یوتیوب',     'icon'=>'youtube'],
+            'twitter'   => ['label'=>'توییتر/X',   'icon'=>'twitter'],
+        ];
+        $out = [];
+        foreach ($defs as $key => $meta) {
+            $val = trim((string)site_setting('social_' . $key, ''));
+            if ($val === '') {
+                // legacy keys from Phase 2 settings
+                $val = trim((string)site_setting($key, ''));
+            }
+            if ($val === '') continue;
+            // Build URL — whatsapp/telegram may be raw phone numbers
+            $url = $val;
+            if ($key === 'whatsapp' && !preg_match('#^https?://#i', $url)) {
+                $url = 'https://wa.me/' . preg_replace('/[^0-9]/', '', $url);
+            }
+            if ($key === 'telegram' && !preg_match('#^https?://#i', $url)) {
+                $url = 'https://t.me/' . ltrim($url, '@');
+            }
+            $out[$key] = ['url'=>$url, 'label'=>$meta['label'], 'icon'=>$meta['icon']];
+        }
+        return $out;
+    }
+}
+
+if (!function_exists('office_locations')) {
+    /**
+     * Returns office locations with map URLs.
+     * @return array<int,array{key:string,title:string,address:string,lat:?string,lng:?string,map_url:?string}>
+     */
+    function office_locations(): array
+    {
+        $out = [];
+        foreach (['tehran','isfahan'] as $k) {
+            $title = site_setting("office_{$k}_title", $k === 'tehran' ? 'دفتر تهران' : 'دفتر اصفهان');
+            $addr  = site_setting("office_{$k}_address", site_setting('address_' . $k, ''));
+            $lat   = site_setting("office_{$k}_lat", '');
+            $lng   = site_setting("office_{$k}_lng", '');
+            $map   = null;
+            if ($lat !== '' && $lng !== '') {
+                $map = 'https://www.google.com/maps?q=' . rawurlencode($lat) . ',' . rawurlencode($lng);
+            }
+            if ($addr !== '' || $map) {
+                $out[] = ['key'=>$k,'title'=>$title,'address'=>(string)$addr,'lat'=>$lat,'lng'=>$lng,'map_url'=>$map];
+            }
+        }
+        return $out;
+    }
+}
+
+
 if (!function_exists('icon_svg')) {
     function icon_svg(string $name, int $size = 28): string
     {
@@ -307,7 +371,15 @@ if (!function_exists('icon_svg')) {
             'folder'   => '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
             'settings' => '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
             'doc'      => '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+            'instagram'=> '<rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>',
+            'telegram' => '<path d="M22 3 2 11l6 2 2 6 4-4 6 4z"/>',
+            'whatsapp' => '<path d="M20 12a8 8 0 1 0-3.2 6.4L21 21l-2.6-4.2A8 8 0 0 0 20 12z"/><path d="M8.5 9.5c.3-.5 1-1 1.5-1s1 .2 1.3.7l.5 1c.2.4 0 .9-.3 1.2l-.5.4c.5 1 1.4 1.9 2.4 2.4l.4-.5c.3-.3.8-.5 1.2-.3l1 .5c.5.3.7.8.7 1.3s-.5 1.2-1 1.5c-1 .6-2.3.3-3.5-.4-1.4-.8-2.7-2.1-3.5-3.5-.7-1.2-1-2.5-.4-3.5z"/>',
+            'linkedin' => '<path d="M4 4h4v4H4zM4 10h4v10H4zM10 10h4v2c.7-1.3 2-2.2 3.5-2.2 2.5 0 4.5 2 4.5 4.5V20h-4v-4.5c0-1-.5-2-1.7-2-1.2 0-2.3.9-2.3 2.2V20h-4z"/>',
+            'aparat'   => '<circle cx="12" cy="12" r="10"/><path d="M8 10a2 2 0 1 1 4 0 2 2 0 1 1-4 0M12 14a2 2 0 1 1 4 0 2 2 0 1 1-4 0M10 17a2 2 0 1 1 4 0 2 2 0 1 1-4 0M14 8a2 2 0 1 1 4 0 2 2 0 1 1-4 0"/>',
+            'youtube'  => '<path d="M22 8c-.2-1.5-1-2.4-2.5-2.7C17.4 5 12 5 12 5s-5.4 0-7.5.3C3 5.6 2.2 6.5 2 8c-.2 1.4-.2 4 0 5.4.2 1.5 1 2.4 2.5 2.7 2.1.3 7.5.3 7.5.3s5.4 0 7.5-.3c1.5-.3 2.3-1.2 2.5-2.7.2-1.4.2-4 0-5.4z"/><path d="m10 14 5-3-5-3z" fill="currentColor" stroke="none"/>',
+            'twitter'  => '<path d="M22 6c-.7.3-1.5.5-2.3.6.8-.5 1.5-1.3 1.8-2.2-.8.5-1.7.8-2.6 1A4.1 4.1 0 0 0 12 9.5c0 .3 0 .6.1.9-3.4-.2-6.5-1.8-8.5-4.3-.4.6-.6 1.3-.6 2.1 0 1.4.7 2.7 1.8 3.4-.6 0-1.2-.2-1.8-.5v.1c0 2 1.4 3.6 3.3 4-.4.1-.8.2-1.2.2-.3 0-.6 0-.8-.1.6 1.6 2.1 2.8 4 2.8-1.4 1.1-3.3 1.8-5.2 1.8H2A11.6 11.6 0 0 0 8.3 22c7.6 0 11.8-6.3 11.8-11.8v-.5c.8-.6 1.5-1.3 2-2.2z"/>',
         ];
+
         $body = $icons[$name] ?? $icons['check'];
         return '<svg width="' . $size . '" height="' . $size . '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $body . '</svg>';
     }
