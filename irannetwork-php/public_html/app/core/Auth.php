@@ -21,11 +21,35 @@ class Auth
         return isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
     }
 
-    public static function isAdmin(): bool
+    public static function role(): string
     {
         $u = self::user();
-        return $u && ($u['role'] ?? '') === 'admin';
+        return (string)($u['role'] ?? '');
     }
+
+    public static function isSuperAdmin(): bool { return self::role() === 'super_admin'; }
+    public static function isAdmin(): bool      { return in_array(self::role(), ['super_admin','admin'], true); }
+    public static function isEditor(): bool     { return in_array(self::role(), ['super_admin','admin','editor'], true); }
+
+    /**
+     * Permission gate. Centralised so views/middlewares share one source of truth.
+     * - super_admin: everything
+     * - admin:       content + settings
+     * - editor:      content only
+     */
+    public static function can(string $permission): bool
+    {
+        $role = self::role();
+        if ($role === 'super_admin') return true;
+
+        $matrix = [
+            'admin'  => ['manage_content','manage_settings','manage_media','manage_redirects','manage_seo','view_messages','manage_users_limited'],
+            'editor' => ['manage_content','manage_media','view_messages'],
+        ];
+        // 'manage_users' is super_admin-only by default
+        return in_array($permission, $matrix[$role] ?? [], true);
+    }
+
 
     /**
      * Attempt to log in. Returns user array on success, null on failure.
@@ -74,7 +98,17 @@ class Auth
 
     public static function requireAdmin(string $redirect = '/admin/login.php'): void
     {
-        if (!self::check() || !self::isAdmin()) {
+        if (!self::check() || !self::isEditor()) {
+            header('Location: ' . $redirect);
+            exit;
+        }
+    }
+
+    public static function requirePermission(string $permission, string $redirect = '/admin/dashboard.php'): void
+    {
+        self::requireAdmin();
+        if (!self::can($permission)) {
+            flash('error','دسترسی غیرمجاز.');
             header('Location: ' . $redirect);
             exit;
         }
