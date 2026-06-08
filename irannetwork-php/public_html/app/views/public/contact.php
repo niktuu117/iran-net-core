@@ -15,21 +15,24 @@
             $phoneT = site_setting('phone_tehran',  defined('CONTACT_PHONE_TEHRAN') ? CONTACT_PHONE_TEHRAN : '02191014664');
             $phoneI = site_setting('phone_isfahan', defined('CONTACT_PHONE_ISFAHAN') ? CONTACT_PHONE_ISFAHAN : '03191011239');
             $email  = site_setting('email',         defined('CONTACT_EMAIL') ? CONTACT_EMAIL : 'info@irannetwork.co');
-            $addrT  = site_setting('address_tehran',  defined('CONTACT_ADDRESS_TEHRAN') ? CONTACT_ADDRESS_TEHRAN : '');
-            $addrI  = site_setting('address_isfahan', defined('CONTACT_ADDRESS_ISFAHAN') ? CONTACT_ADDRESS_ISFAHAN : '');
+            $offices = office_locations();
+            $phoneMap = ['tehran'=>$phoneT, 'isfahan'=>$phoneI];
             ?>
 
+            <?php foreach ($offices as $office): ?>
             <div class="contact-block">
-                <h4><?= icon_svg('pin', 20) ?> دفتر تهران</h4>
-                <p><?= e($addrT) ?></p>
-                <p><a dir="ltr" href="tel:<?= e($phoneT) ?>"><?= e($phoneT) ?></a></p>
+                <h4><?= icon_svg('pin', 20) ?> <?= e($office['title']) ?></h4>
+                <?php if ($office['address']): ?><p><?= e($office['address']) ?></p><?php endif; ?>
+                <?php $ph = $phoneMap[$office['key']] ?? ''; if ($ph): ?>
+                    <p><a dir="ltr" href="tel:<?= e($ph) ?>"><?= icon_svg('phone',16) ?> <?= e($ph) ?></a></p>
+                <?php endif; ?>
+                <?php if ($office['map_url']): ?>
+                    <p><a class="btn btn-secondary btn-sm" href="<?= e($office['map_url']) ?>" target="_blank" rel="noopener noreferrer">
+                        <?= icon_svg('pin',16) ?> مشاهده روی نقشه
+                    </a></p>
+                <?php endif; ?>
             </div>
-
-            <div class="contact-block">
-                <h4><?= icon_svg('pin', 20) ?> دفتر اصفهان</h4>
-                <p><?= e($addrI) ?></p>
-                <p><a dir="ltr" href="tel:<?= e($phoneI) ?>"><?= e($phoneI) ?></a></p>
-            </div>
+            <?php endforeach; ?>
 
             <div class="contact-block">
                 <h4><?= icon_svg('mail', 20) ?> ایمیل</h4>
@@ -41,6 +44,20 @@
                 <p>شنبه تا چهارشنبه: ۹:۰۰ تا ۱۸:۰۰</p>
                 <p>پنجشنبه: ۹:۰۰ تا ۱۳:۰۰</p>
             </div>
+
+            <?php $socials = social_links(); if ($socials): ?>
+            <div class="contact-block">
+                <h4>شبکه‌های اجتماعی</h4>
+                <div class="footer-socials" style="justify-content:flex-start;margin-top:8px">
+                    <?php foreach ($socials as $key => $sl): ?>
+                        <a href="<?= e($sl['url']) ?>" target="_blank" rel="noopener noreferrer"
+                           aria-label="<?= e($sl['label']) ?>" title="<?= e($sl['label']) ?>" class="social-link social-<?= e($key) ?>">
+                            <?= icon_svg($sl['icon'], 20) ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
 
         <form class="contact-form" id="contactForm" method="post" action="/contact" novalidate>
