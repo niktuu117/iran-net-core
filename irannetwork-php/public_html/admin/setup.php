@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $userModel->create([
             'name' => $name, 'email' => $email,
             'password_hash' => password_hash($password, PASSWORD_BCRYPT),
-            'role' => 'admin', 'status' => 'active',
+            'role' => 'super_admin', 'status' => 'active',
         ]);
         flash('success', 'حساب مدیر با موفقیت ساخته شد. اکنون وارد شوید.');
         redirect('/admin/login.php');
