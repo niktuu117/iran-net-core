@@ -137,3 +137,10 @@ a:hover{color:#67e8f9}
 .copy-btn{cursor:pointer}
 
 input[type=checkbox]{width:auto !important;margin-inline-end:6px}
+
+/* --- Phase 5: users / role badges --- */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;background:#eef2ff;color:#4338ca}
+.badge-super_admin{background:#fee2e2;color:#b91c1c}
+.badge-admin{background:#dbeafe;color:#1d4ed8}
+.badge-editor{background:#dcfce7;color:#15803d}
+.badge-user{background:#f1f5f9;color:#475569}

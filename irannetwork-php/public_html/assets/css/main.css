@@ -831,3 +831,17 @@ button { font-family: inherit; cursor: pointer; }
 .cta-block h3{margin:0 0 16px}
 .post-meta{color:var(--muted,#94a3b8);font-size:14px;margin-top:8px}
 .text-muted{color:var(--muted,#94a3b8)}
+
+/* --- Phase 5 polish --- */
+.footer-socials{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:20px 0 8px}
+.social-link{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;
+  background:rgba(255,255,255,.08);color:#fff;transition:transform .15s ease, background .15s ease;border:1px solid rgba(255,255,255,.12)}
+.social-link:hover{transform:translateY(-2px);background:rgba(255,255,255,.18)}
+.social-instagram:hover{background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#bc1888)}
+.social-telegram:hover{background:#229ED9}
+.social-whatsapp:hover{background:#25D366}
+.social-linkedin:hover{background:#0A66C2}
+.social-youtube:hover{background:#FF0000}
+.social-twitter:hover{background:#000}
+.social-aparat:hover{background:#ED1C24}
+.contact-block .btn{margin-top:8px}
