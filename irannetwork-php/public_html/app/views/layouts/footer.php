@@ -58,6 +58,17 @@
             </div>
         </div>
 
+        <?php $socials = social_links(); if ($socials): ?>
+        <div class="footer-socials" aria-label="شبکه‌های اجتماعی">
+            <?php foreach ($socials as $key => $s): ?>
+                <a href="<?= e($s['url']) ?>" target="_blank" rel="noopener noreferrer"
+                   aria-label="<?= e($s['label']) ?>" title="<?= e($s['label']) ?>" class="social-link social-<?= e($key) ?>">
+                    <?= icon_svg($s['icon'], 20) ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+
         <div class="footer-bottom">
             <p>© <?= e((string)date('Y')) ?> ایران نتورک — تمامی حقوق محفوظ است.</p>
         </div>
