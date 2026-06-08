@@ -275,6 +275,70 @@ if (!function_exists('site_services')) {
     }
 }
 
+if (!function_exists('social_links')) {
+    /**
+     * Returns active social links, keyed by platform.
+     * Each entry: ['url','label','icon'].
+     */
+    function social_links(): array
+    {
+        $defs = [
+            'instagram' => ['label'=>'اینستاگرام', 'icon'=>'instagram'],
+            'telegram'  => ['label'=>'تلگرام',     'icon'=>'telegram'],
+            'whatsapp'  => ['label'=>'واتساپ',     'icon'=>'whatsapp'],
+            'linkedin'  => ['label'=>'لینکدین',    'icon'=>'linkedin'],
+            'aparat'    => ['label'=>'آپارات',     'icon'=>'aparat'],
+            'youtube'   => ['label'=>'یوتیوب',     'icon'=>'youtube'],
+            'twitter'   => ['label'=>'توییتر/X',   'icon'=>'twitter'],
+        ];
+        $out = [];
+        foreach ($defs as $key => $meta) {
+            $val = trim((string)site_setting('social_' . $key, ''));
+            if ($val === '') {
+                // legacy keys from Phase 2 settings
+                $val = trim((string)site_setting($key, ''));
+            }
+            if ($val === '') continue;
+            // Build URL — whatsapp/telegram may be raw phone numbers
+            $url = $val;
+            if ($key === 'whatsapp' && !preg_match('#^https?://#i', $url)) {
+                $url = 'https://wa.me/' . preg_replace('/[^0-9]/', '', $url);
+            }
+            if ($key === 'telegram' && !preg_match('#^https?://#i', $url)) {
+                $url = 'https://t.me/' . ltrim($url, '@');
+            }
+            $out[$key] = ['url'=>$url, 'label'=>$meta['label'], 'icon'=>$meta['icon']];
+        }
+        return $out;
+    }
+}
+
+if (!function_exists('office_locations')) {
+    /**
+     * Returns office locations with map URLs.
+     * @return array<int,array{key:string,title:string,address:string,lat:?string,lng:?string,map_url:?string}>
+     */
+    function office_locations(): array
+    {
+        $out = [];
+        foreach (['tehran','isfahan'] as $k) {
+            $title = site_setting("office_{$k}_title", $k === 'tehran' ? 'دفتر تهران' : 'دفتر اصفهان');
+            $addr  = site_setting("office_{$k}_address", site_setting('address_' . $k, ''));
+            $lat   = site_setting("office_{$k}_lat", '');
+            $lng   = site_setting("office_{$k}_lng", '');
+            $map   = null;
+            if ($lat !== '' && $lng !== '') {
+                $map = 'https://www.google.com/maps?q=' . rawurlencode($lat) . ',' . rawurlencode($lng);
+            }
+            if ($addr !== '' || $map) {
+                $out[] = ['key'=>$k,'title'=>$title,'address'=>(string)$addr,'lat'=>$lat,'lng'=>$lng,'map_url'=>$map];
+            }
+        }
+        return $out;
+    }
+}
+
+
 if (!function_exists('icon_svg')) {
     function icon_svg(string $name, int $size = 28): string
     {
