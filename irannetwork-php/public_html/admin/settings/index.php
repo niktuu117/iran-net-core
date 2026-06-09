@@ -20,12 +20,14 @@ $groups = [
     'دفتر تهران' => [
         'office_tehran_title'   => ['عنوان', 'text'],
         'office_tehran_address' => ['آدرس', 'textarea'],
+        'office_tehran_phone'   => ['شماره تماس', 'ltr'],
         'office_tehran_lat'     => ['عرض جغرافیایی (lat)', 'ltr'],
         'office_tehran_lng'     => ['طول جغرافیایی (lng)', 'ltr'],
     ],
     'دفتر اصفهان' => [
         'office_isfahan_title'   => ['عنوان', 'text'],
         'office_isfahan_address' => ['آدرس', 'textarea'],
+        'office_isfahan_phone'   => ['شماره تماس', 'ltr'],
         'office_isfahan_lat'     => ['عرض جغرافیایی (lat)', 'ltr'],
         'office_isfahan_lng'     => ['طول جغرافیایی (lng)', 'ltr'],
     ],
