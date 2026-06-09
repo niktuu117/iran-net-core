@@ -324,14 +324,17 @@ if (!function_exists('office_locations')) {
         foreach (['tehran','isfahan'] as $k) {
             $title = site_setting("office_{$k}_title", $k === 'tehran' ? 'دفتر تهران' : 'دفتر اصفهان');
             $addr  = site_setting("office_{$k}_address", site_setting('address_' . $k, ''));
+            $phone = site_setting("office_{$k}_phone", site_setting('phone_' . $k, ''));
             $lat   = site_setting("office_{$k}_lat", '');
             $lng   = site_setting("office_{$k}_lng", '');
             $map   = null;
             if ($lat !== '' && $lng !== '') {
                 $map = 'https://www.google.com/maps?q=' . rawurlencode($lat) . ',' . rawurlencode($lng);
+            } elseif ($addr !== '') {
+                $map = 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($addr);
             }
-            if ($addr !== '' || $map) {
-                $out[] = ['key'=>$k,'title'=>$title,'address'=>(string)$addr,'lat'=>$lat,'lng'=>$lng,'map_url'=>$map];
+            if ($addr !== '' || $map || $phone !== '') {
+                $out[] = ['key'=>$k,'title'=>$title,'address'=>(string)$addr,'phone'=>(string)$phone,'lat'=>$lat,'lng'=>$lng,'map_url'=>$map];
             }
         }
         return $out;
